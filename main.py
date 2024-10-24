@@ -7,8 +7,10 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup
 
-from decouple import config
-from outline_vpn.outline_vpn import OutlineVPN
+from backend.outline.manager import OutlineManager
+
+
+
 
 from backend.database.users import UsersDatabase
 
@@ -16,27 +18,6 @@ load_dotenv()
 TOKEN = getenv("BOT_TOKEN")
 
 dp = Dispatcher()
-
-api_url = config('API_URL')
-cert_sha256 = config('CERT_SHA')
-
-client = OutlineVPN(api_url=api_url, cert_sha256=cert_sha256)
-
-
-def get_key_info(key_id: str):
-    return client.get_key(key_id)
-
-
-def create_new_key(key_id: str = None, name: str = None, data_limit_bytes: float = None):
-    return client.create_key(key_id=key_id, name=name, data_limit=data_limit_bytes)
-
-
-def delete_key(key_id: str):
-    return client.delete_key(key_id)
-
-
-def upd_limit(key_id: str, data_limit_bytes: int):
-    return client.add_data_limit(key_id, data_limit_bytes)
 
 
 @dp.message(CommandStart())
