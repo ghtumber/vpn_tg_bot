@@ -1,10 +1,48 @@
+import asyncio
 import json
+import re
 from os import getenv
 from dotenv import load_dotenv
 import aiohttp
 
 load_dotenv()
 DB_TOKEN = getenv("DB_TOKEN")
+
+
+class User:
+    def __init__(self, id: int, userID: int, userTG: str, keyID: int, key: str, keyLimit: int, PaymentSum: int):
+        self.id = id
+        self.userID = userID
+        self.userTG = userTG if re.fullmatch(r'@[a-zA-Z0-9]{5,}', r''.join(userTG)) else Exception("UserTG Regular Error")
+        self.keyID = keyID
+        self.key = key if key.startswith("ss:/") else Exception("UserTG Regular Error")
+        self.keyLimit = keyLimit
+        self.PaymentSum = PaymentSum
+
+    def change(self, field, new_value):
+        if field == "userID":
+            self.userID = new_value
+        if field == "userTG":
+            self.userTG = new_value
+        if field == "keyID":
+            self.keyID = new_value
+        if field == "key":
+            self.key = new_value
+        if field == "keyLimit":
+            self.keyLimit = new_value
+        if field == "PaymentSum":
+            self.PaymentSum = new_value
+
+    def __str__(self):
+        value = f"""
+{self.userID=}
+{self.userTG=}
+{self.keyID=}
+{self.key=}
+{self.keyLimit=}
+{self.PaymentSum=}
+"""
+        return value
 
 
 async def get_user_by(ID: str = "", TG: str = "", KEY: str = "") -> str:
@@ -58,34 +96,35 @@ async def create_user(userID: int, userTG: str, keyID: int, key: str, keyLimit: 
             return Exception(f"Create request ERROR!\n{text}")
 
 
-async def update_user(user: dict, change: dict) -> str:
+async def update_user(user: User, change: dict) -> User | Exception:
     """
     change accepts dict formed like this: {"field_to_change": new_value}
     !!! new_value need to be in accepted datatype
     !!! field_to_change need to fully equal field you need to change
     """
     for field, value in change.items():
-        user[field] = value
+        user.change(field=field, new_value=value)
     async with aiohttp.ClientSession() as session:
         response = await session.patch(
-            f"https://api.baserow.io/api/database/rows/table/375433/{user['id']}/?user_field_names=true",
+            f"https://api.baserow.io/api/database/rows/table/375433/{user.id}/?user_field_names=true",
             headers={
                 f"Authorization": f"Token {DB_TOKEN}",
                 "Content-Type": "application/json"
             },
             json={
-                "userID": user["userID"],
-                "userTG": user["userTG"],
-                "keyID": user["keyID"],
-                "key": user["key"],
-                "keyLimit": user["keyLimit"],
-                "PaymentSum": user["PaymentSum"]
+                "userID": str(user.userID),
+                "userTG": str(user.userTG),
+                "keyID": str(user.keyID),
+                "key": str(user.key),
+                "keyLimit": str(user.keyLimit),
+                "PaymentSum": str(user.PaymentSum)
             }
         )
         text = await response.text()
         if response.status == 200:
             print(f"###UPDATED USER###\nCHANGED: {change}\nUPDATED: {text}\n#########")
-            return text
+            u = json.loads(text)
+            return User(id=u["id"], userID=u["userID"], userTG=u["userTG"], keyID=u["keyID"], key=u["key"], keyLimit=u["keyLimit"], PaymentSum=u["PaymentSum"])
         else:
             return Exception(f"Update request ERROR!\n{text}")
 
@@ -116,3 +155,12 @@ async def delete_user(user: dict):
 
 # DELETE: delete_user(user)
 
+
+async def main():
+    user = User(id=16, userID=1234567, userTG='TestTG', keyID=30, key='ss://LOLtest', keyLimit=0, PaymentSum=100)
+    res = await update_user(user=user, change={"keyID": 35})
+    d = json.loads(res)
+    print(d)
+
+
+asyncio.run(main())

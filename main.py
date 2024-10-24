@@ -1,11 +1,9 @@
 import asyncio
 import logging
-
 import sys
 from os import getenv
 from dotenv import load_dotenv
-
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup
 
@@ -14,19 +12,12 @@ from backend.outline.manager import OutlineManager
 
 
 
-from aiogram import F
-
+from backend.database.users import UsersDatabase
 
 load_dotenv()
 TOKEN = getenv("BOT_TOKEN")
 
-
 dp = Dispatcher()
-
-
-
-
-
 
 
 @dp.message(CommandStart())
@@ -45,25 +36,15 @@ async def cmd_start(message: Message):
     await message.answer("Вы админ или юзер?", reply_markup=keyboard)
 
 
-
-
-@dp.message(F.text.lower() == "User")
+@dp.message(F.text.lower() == "user")
 async def with_puree(message: Message):
     await message.reply("Вы гой")
 
-@dp.message(F.text.lower() == "Admin")
-async def without_puree(message:Message):
+
+@dp.message(F.text.lower() == "admin")
+async def without_puree(message: Message):
     await message.reply("Прогревайте гоев")
 
-'''
-@dp.message(CommandStart())
-async def command_start_handler(message: Message):
-    """
-    `/start` handler
-    """
-    await message.answer(f"Hello, {message.from_user.full_name}!")
-
-'''
 
 @dp.message()
 async def echo_handler(message: Message):
