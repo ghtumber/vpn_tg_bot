@@ -1,5 +1,10 @@
 from outline_vpn.outline_vpn import OutlineVPN
-from globals import OUTLINE_API_URL, OUTLINE_CERT_SHA256
+from dotenv import load_dotenv
+from os import getenv
+load_dotenv()
+
+OUTLINE_API_URL = getenv('API_URL')
+OUTLINE_CERT_SHA256 = getenv('CERT_SHA')
 
 
 class OutlineManager:
@@ -12,8 +17,7 @@ class OutlineManager:
     @classmethod
     def get_key_info_by_key(cls, key: str):
         for k in cls.client.get_keys():
-            print(k.access_url)
-            if k.access_url.split("?")[0] == key:
+            if k.access_url == key:
                 return k
 
     @classmethod
@@ -31,3 +35,7 @@ class OutlineManager:
     @classmethod
     def update_limit(cls, key_id: str, data_limit_bytes: int):
         return cls.client.add_data_limit(key_id, data_limit_bytes)
+
+
+k = OutlineManager.get_key_info_by_key(key="ss:/lolkek")
+print(k)

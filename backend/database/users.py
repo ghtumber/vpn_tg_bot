@@ -8,7 +8,7 @@ class UsersDatabase:
     DB_TOKEN = getenv("DB_TOKEN")
 
     @classmethod
-    async def get_user_by(cls, ID: str = "", TG: str = "", KEY: str = "") -> Exception | User:
+    async def get_user_by(cls, ID: str = "", TG: str = "", KEY: str = "") -> int | User:
         if ID:
             filters = {'filter_type': 'AND',
                        'filters': [{'field': 'userID', 'type': 'equal', 'value': str(ID)}]}
@@ -19,7 +19,8 @@ class UsersDatabase:
             filters = {'filter_type': 'AND',
                        'filters': [{'field': 'key', 'type': 'equal', 'value': str(KEY)}]}
         else:
-            return Exception("No data passed to get request!")
+            print(f"##########\nException: No data passed to get request!\n##########")
+            return 0
         async with aiohttp.ClientSession() as session:
             response = await session.get(
                 f"https://api.baserow.io/api/database/rows/table/375433/?user_field_names=true&filters={json.dumps(filters)}",
@@ -28,12 +29,13 @@ class UsersDatabase:
                 }
             )
             text = await response.text()
-            if response.status == 200:
-                u = json.loads(text)
+            u = json.loads(text)
+            if response.status == 200 and len(u["results"]) > 0:
                 u = u["results"][0]
-                return User(id=u["id"], userID=u["userID"], userTG=u["userTG"], keyID=u["keyID"], key=u["key"], keyLimit=u["keyLimit"], PaymentSum=u["PaymentSum"])
+                return User(id=int(u["id"]), userID=int(u["userID"]), userTG=u["userTG"], keyID=int(u["keyID"]), key=u["key"], keyLimit=float(u["keyLimit"]), PaymentSum=int(u["PaymentSum"]))
             else:
-                return Exception(f"Get request ERROR!\n{text}")
+                print(f"##########\nException: Get request ERROR!\n{text}\n##########")
+                return 0
 
     @classmethod
     async def create_user(cls, user: User) -> User | Exception:
