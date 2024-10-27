@@ -5,7 +5,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKe
 
 from backend.models import User
 from frontend.replys import *
-from backend.outline.manager import OutlineManager
+from backend.outline.managers import OutlineManager_1
 from backend.database.users import UsersDatabase
 
 router = Router()
@@ -42,7 +42,7 @@ async def complete_reg(message: Message, state: FSMContext):
     key = data["key"]
     key = key.split("?")[0]
     print(key)
-    k = OutlineManager.get_key_info_by_key(key=key)
+    k = OutlineManager_1.get_key_info_by_key(key=key)
     if not k:
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
@@ -58,6 +58,5 @@ async def complete_reg(message: Message, state: FSMContext):
     PaymentSum = data["payment_sum"]
     user = User(userID=userID, userTG=userTG, keyID=keyID, keyLimit=keyLimit, key=key, PaymentSum=PaymentSum)
     u = await UsersDatabase.create_user(user)
-    # await message.answer(f"Юзер записан в БД: {u.id=} {u}")
     await message.answer(f"✅ Аккаунт активирован!\n\nСкоро бот заработает на полную 🔥")
 

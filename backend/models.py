@@ -5,9 +5,15 @@ class User:
     def __init__(self, userID: int, userTG: str, keyID: int, key: str, keyLimit: float, PaymentSum: int, id: int = None):
         self.id = id
         self.userID = userID
-        self.userTG = userTG if re.fullmatch(r'@[a-zA-Z0-9]+', r''.join(userTG)) else Exception("UserTG Regular Error")
+        if re.fullmatch(r'@[a-zA-Z0-9]+', r''.join(userTG)):
+            self.userTG = userTG
+        else:
+            raise Exception("UserTG Regular Error")
         self.keyID = keyID
-        self.key = key if key.startswith("ss:/") else Exception("UserTG Regular Error")
+        if key.startswith("ss:/"):
+            self.key = key
+        else:
+            raise Exception("UserTG Regular Error")
         self.keyLimit = keyLimit
         self.PaymentSum = PaymentSum
 
