@@ -8,6 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from frontend.replys import *
 from frontend.user.handlers import router as user_router
+from frontend.admin.handlers import router as admin_router
 from globals import *
 
 
@@ -32,6 +33,12 @@ async def to_menu(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer(text="")
     await menu(callback.message)
+
+
+@dp.callback_query(F.data == "cancel_of_cancel")
+async def to_menu(callback: CallbackQuery):
+    await callback.answer(text="")
+    await callback.message.delete()
 
 
 @dp.message(F.text.contains("Menu"))
@@ -73,6 +80,7 @@ async def main():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     dp.include_router(user_router)
+    dp.include_router(admin_router)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

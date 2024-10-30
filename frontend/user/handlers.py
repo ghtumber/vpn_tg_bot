@@ -17,7 +17,7 @@ class Registration(StatesGroup):
 
 
 @router.callback_query(F.data == "user_registration")
-async def handel_reg(callback: CallbackQuery, state: FSMContext):
+async def handle_reg(callback: CallbackQuery, state: FSMContext):
     await callback.answer(text='')
     user_resp = await UsersDatabase.get_user_by(TG="@"+callback.from_user.username)
     if user_resp != 0:

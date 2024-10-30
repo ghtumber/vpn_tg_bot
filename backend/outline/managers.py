@@ -1,9 +1,10 @@
 from outline_vpn.outline_vpn import OutlineVPN, OutlineKey, OutlineServerErrorException
-from globals import OUTLINE_API_URL_1, OUTLINE_CERT_SHA256_1
+from globals import OUTLINE_API_URL_1, OUTLINE_CERT_SHA256_1, OUTLINE_API_URL_2, OUTLINE_CERT_SHA256_2
 
 
 class OutlineManager:
-    def __init__(self, api_url: str, cert_sha256: str):
+    def __init__(self, api_url: str, cert_sha256: str, name: str):
+        self.name = name
         self.client = OutlineVPN(api_url=api_url, cert_sha256=cert_sha256)
 
     @staticmethod
@@ -33,5 +34,6 @@ class OutlineManager:
         return self.client.add_data_limit(key_id, data_limit_bytes)
 
 
-OutlineManager_1 = OutlineManager(api_url=OUTLINE_API_URL_1, cert_sha256=OUTLINE_CERT_SHA256_1)
+OutlineManager_1 = OutlineManager(api_url=OUTLINE_API_URL_1, cert_sha256=OUTLINE_CERT_SHA256_1, name="Micro")
+OutlineManager_2 = OutlineManager(api_url=OUTLINE_API_URL_2, cert_sha256=OUTLINE_CERT_SHA256_2, name="Start")
 
