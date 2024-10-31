@@ -4,7 +4,7 @@ from os import getenv
 load_dotenv()
 
 """DEBUG MODE MUST BE DISABLED ON PROD"""
-DEBUG = True
+DEBUG = False
 """###################################"""
 
 TOKEN = getenv("BOT_TOKEN") if not DEBUG else getenv("DEBUG_BOT_TOKEN")
