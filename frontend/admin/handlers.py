@@ -3,6 +3,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
+from outline_vpn.outline_vpn import OutlineKey
 
 from backend.models import User
 from frontend.replys import *
@@ -43,7 +44,7 @@ async def handle_create_key(callback: CallbackQuery, state: FSMContext):
         builder = ReplyKeyboardBuilder()
         for ind in range(len(SERVERS)):
             builder.button(text=f"{str(ind + 1)}) {SERVERS[ind].name}")
-        builder.button(text="Отмена")
+        builder.button(text="❌ Отмена")
         if len(SERVERS) % 2 == 0:
             builder.adjust(*[2 for _ in range(len(SERVERS) // 2)], 1)
         else:
@@ -84,8 +85,14 @@ async def handle_key_data_limiting(message: Message, state: FSMContext):
     await state.update_data(data_limit=limit)
     data = await state.get_data()
     await state.clear()
-    key = data["server"].create_new_key(name=data["name"], data_limit_gb=data["data_limit"])
+    key: OutlineKey = data["server"].create_new_key(name=data["name"], data_limit_gb=data["data_limit"])
     link = str(key.access_url).split("?")[0] + "#Proxym1ty-VPN"
-    await message.answer(text=f"✅ Ключ создан:\nНазвание: {key.name}\nОграничение: {key.data_limit}\nКлюч: {link}", reply_markup=MENU_KEYBOARD_MARKUP)
-    # TODO: Добавить форматирование
+    answer = f"""
+✅ <b>Ключ создан</b>
+📛 <b>Название</b>: {key.name}
+🆔 <b>ID</b>: {key.key_id}
+⏹ <b>Ограничение</b>: {key.data_limit / 1024**3}GB
+🔑 <b>Ключ</b>: <pre><code>{link}</code></pre>
+"""
+    await message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)
 
