@@ -3,8 +3,9 @@ from globals import OUTLINE_API_URL_1, OUTLINE_CERT_SHA256_1, OUTLINE_API_URL_2,
 
 
 class OutlineManager:
-    def __init__(self, api_url: str, cert_sha256: str, name: str):
+    def __init__(self, api_url: str, cert_sha256: str, name: str, location: str):
         self.name = name
+        self.location = location
         self.client = OutlineVPN(api_url=api_url, cert_sha256=cert_sha256)
 
     @staticmethod
@@ -13,7 +14,6 @@ class OutlineManager:
 
     def get_key_info_by_key(self, key: str) -> OutlineKey | None:
         for k in self.client.get_keys():
-            print(k.access_url)
             if k.access_url.split("?")[0] == key:
                 return k
         return None
@@ -34,6 +34,8 @@ class OutlineManager:
         return self.client.add_data_limit(key_id, data_limit_bytes)
 
 
-OutlineManager_1 = OutlineManager(api_url=OUTLINE_API_URL_1, cert_sha256=OUTLINE_CERT_SHA256_1, name="Micro")
-OutlineManager_2 = OutlineManager(api_url=OUTLINE_API_URL_2, cert_sha256=OUTLINE_CERT_SHA256_2, name="Start")
+OutlineManager_1 = OutlineManager(api_url=OUTLINE_API_URL_1, cert_sha256=OUTLINE_CERT_SHA256_1, name="Micro", location="🇩🇪Germany/🇺🇸USA")
+OutlineManager_2 = OutlineManager(api_url=OUTLINE_API_URL_2, cert_sha256=OUTLINE_CERT_SHA256_2, name="Start", location="🇩🇪Germany")
+
+SERVERS = [OutlineManager_1, OutlineManager_2]
 

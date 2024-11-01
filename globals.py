@@ -1,10 +1,11 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from dotenv import load_dotenv
 from os import getenv
+
 load_dotenv()
 
 """DEBUG MODE MUST BE DISABLED ON PROD"""
-DEBUG = False
+DEBUG = True
 """###################################"""
 
 TOKEN = getenv("BOT_TOKEN") if not DEBUG else getenv("DEBUG_BOT_TOKEN")
@@ -13,6 +14,8 @@ OUTLINE_API_URL_1 = getenv('API_URL_1')
 OUTLINE_CERT_SHA256_1 = getenv('CERT_SHA_1')
 OUTLINE_API_URL_2 = getenv('API_URL_2')
 OUTLINE_CERT_SHA256_2 = getenv('CERT_SHA_2')
+DB_TOKEN = getenv("DB_TOKEN")
+
 
 MENU_KEYBOARD_MARKUP = ReplyKeyboardMarkup(
         keyboard=[

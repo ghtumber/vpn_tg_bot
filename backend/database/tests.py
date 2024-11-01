@@ -158,9 +158,8 @@ async def delete_user(user: dict):
 
 async def main():
     user = User(id=16, userID=1234567, userTG='TestTG', keyID=30, key='ss://LOLtest', keyLimit=0, PaymentSum=100)
-    res = await update_user(user=user, change={"keyID": 35})
-    d = json.loads(res)
-    print(d)
+    res = await get_user_by(ID="5475897905")  # "PaymentDate":"2024-12-01","serverName":"Micro"
+    print(res)
 
 
 asyncio.run(main())

@@ -10,10 +10,9 @@ from frontend.replys import *
 from backend.outline.managers import OutlineManager_1, OutlineManager_2, OutlineManager
 from backend.database.users import UsersDatabase
 from globals import ADMINS, MENU_KEYBOARD_MARKUP
+from backend.outline.managers import SERVERS
 
 router = Router()
-
-SERVERS = [OutlineManager_1, OutlineManager_2]
 
 CANCEL_KB = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text="❌ Отмена")]

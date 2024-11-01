@@ -2,13 +2,15 @@ import json
 from os import getenv
 import aiohttp
 from backend.models import User
+from datetime import date
+from globals import DB_TOKEN
 
 
 class UsersDatabase:
-    DB_TOKEN = getenv("DB_TOKEN")
+    DB_TOKEN = DB_TOKEN
 
     @classmethod
-    async def get_user_by(cls, ID: str = "", TG: str = "", KEY: str = "") -> int | User:
+    async def get_user_by(cls, ID: str = "", TG: str = "", KEY: str = "") -> None | User:
         if ID:
             filters = {'filter_type': 'AND',
                        'filters': [{'field': 'userID', 'type': 'equal', 'value': str(ID)}]}
@@ -20,7 +22,7 @@ class UsersDatabase:
                        'filters': [{'field': 'key', 'type': 'equal', 'value': str(KEY)}]}
         else:
             print(f"##########\nException: No data passed to get request!\n##########")
-            return 0
+            return None
         async with aiohttp.ClientSession() as session:
             response = await session.get(
                 f"https://api.baserow.io/api/database/rows/table/375433/?user_field_names=true&filters={json.dumps(filters)}",
@@ -32,10 +34,12 @@ class UsersDatabase:
             u = json.loads(text)
             if response.status == 200 and len(u["results"]) > 0:
                 u = u["results"][0]
-                return User(id=int(u["id"]), userID=int(u["userID"]), userTG=u["userTG"], keyID=int(u["keyID"]), key=u["key"], keyLimit=float(u["keyLimit"]), PaymentSum=int(u["PaymentSum"]))
+                PD = u["PaymentDate"].split("-")
+                return User(id=int(u["id"]), userID=int(u["userID"]), userTG=u["userTG"], keyID=int(u["keyID"]), key=u["key"],
+                            keyLimit=float(u["keyLimit"]), PaymentSum=int(u["PaymentSum"]), PaymentDate=date(int(PD[0]), int(PD[1]), int(PD[2])), serverName=u["serverName"])
             else:
                 print(f"##########\nException: Get request ERROR!\n{text}\n##########")
-                return 0
+                return None
 
     @classmethod
     async def create_user(cls, user: User) -> User | Exception:
@@ -52,14 +56,18 @@ class UsersDatabase:
                     "keyID": user.keyID,
                     "key": user.key,
                     "keyLimit": user.keyLimit,
-                    "PaymentSum": user.PaymentSum
+                    "PaymentSum": int(user.PaymentSum),
+                    "PaymentDate": str(user.PaymentDate.strftime("%Y-%m-%d")),
+                    "serverName": str(user.serverName),
                 }
             )
             text = await response.text()
             if response.status == 200:
-                print(f"###UPDATED USER###\nCREATED: {text}\n#########")
+                print(f"###CREATED USER###\nCREATED: {text}\n#########")
                 u = json.loads(text)
-                return User(id=u["id"], userID=u["userID"], userTG=u["userTG"], keyID=u["keyID"], key=u["key"], keyLimit=u["keyLimit"], PaymentSum=u["PaymentSum"])
+                PD = u["PaymentDate"].split("-")
+                return User(id=u["id"], userID=u["userID"], userTG=u["userTG"], keyID=u["keyID"], key=u["key"], keyLimit=u["keyLimit"],
+                            PaymentSum=u["PaymentSum"], PaymentDate=date(int(PD[0]), int(PD[1]), int(PD[2])), serverName=u["serverName"])
             else:
                 return Exception(f"Create request ERROR!\n{text}")
 
@@ -85,20 +93,23 @@ class UsersDatabase:
                     "keyID": str(user.keyID),
                     "key": str(user.key),
                     "keyLimit": str(user.keyLimit),
-                    "PaymentSum": str(user.PaymentSum)
+                    "PaymentSum": str(user.PaymentSum),
+                    "PaymentDate": str(user.PaymentDate.strftime("%y-%m-%d")),
+                    "serverName": str(user.serverName),
                 }
             )
             text = await response.text()
             if response.status == 200:
                 print(f"###UPDATED USER###\nCHANGED: {change}\nUPDATED: {text}\n#########")
                 u = json.loads(text)
+                PD = u["PaymentDate"].split("-")
                 return User(id=u["id"], userID=u["userID"], userTG=u["userTG"], keyID=u["keyID"], key=u["key"], keyLimit=u["keyLimit"],
-                            PaymentSum=u["PaymentSum"])
+                            PaymentSum=u["PaymentSum"], PaymentDate=date(int(PD[0]), int(PD[1]), int(PD[2])), serverName=u["serverName"])
             else:
                 return Exception(f"!!! Update request ERROR!\n{text}")
 
     @classmethod
-    async def delete_user(cls, user: User):
+    async def delete_user(cls, user: User) -> User | Exception:
         async with aiohttp.ClientSession() as session:
             response = await session.delete(
                 f"https://api.baserow.io/api/database/rows/table/375433/{user.id}/",
