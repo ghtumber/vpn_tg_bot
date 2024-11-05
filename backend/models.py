@@ -6,7 +6,7 @@ class User:
     def __init__(self, userID: int, userTG: str, keyID: int, key: str, keyLimit: float, PaymentSum: int, PaymentDate: date, serverName: str, id: int = None):
         self.id = id
         self.userID = userID
-        if re.fullmatch(r'@[a-zA-Z0-9]+', r''.join(userTG)):
+        if re.fullmatch(r'@[a-zA-Z0-9_]+', r''.join(userTG)):
             self.userTG = userTG
         else:
             raise Exception("UserTG Regular Error")
