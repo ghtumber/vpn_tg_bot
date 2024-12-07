@@ -8,7 +8,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKe
 
 from backend.models import User
 from frontend.replys import *
-from backend.outline.managers import OutlineManager_1, SERVERS
+from backend.outline.managers import SERVERS
 from backend.database.users import UsersDatabase
 
 router = Router()

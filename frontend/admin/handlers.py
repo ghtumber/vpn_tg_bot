@@ -7,8 +7,6 @@ from outline_vpn.outline_vpn import OutlineKey
 
 from backend.models import User
 from frontend.replys import *
-from backend.outline.managers import OutlineManager_1, OutlineManager_2, OutlineManager
-from backend.database.users import UsersDatabase
 from globals import ADMINS, MENU_KEYBOARD_MARKUP
 from backend.outline.managers import SERVERS
 

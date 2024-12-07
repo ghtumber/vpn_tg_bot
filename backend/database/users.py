@@ -10,6 +10,30 @@ class UsersDatabase:
     DB_TOKEN = DB_TOKEN
 
     @classmethod
+    async def get_all_users(cls) -> None | list[User]:
+        """Don't use if you can!!!"""
+        async with aiohttp.ClientSession() as session:
+            response = await session.get(
+                f"https://api.baserow.io/api/database/rows/table/375433/?user_field_names=true",
+                headers={
+                    "Authorization": f"Token {cls.DB_TOKEN}"
+                }
+            )
+            text = await response.text()
+            obj = json.loads(text)
+            if response.status == 200 and len(obj["results"]) > 0:
+                results = obj["results"]
+                res = []
+                for result in results:
+                    PD = result["PaymentDate"].split("-")
+                    res.append(User(id=int(result["id"]), userID=int(result["userID"]), userTG=result["userTG"], keyID=int(result["keyID"]), key=result["key"],
+                            keyLimit=float(result["keyLimit"]), PaymentSum=int(result["PaymentSum"]), PaymentDate=date(int(PD[0]), int(PD[1]), int(PD[2])), serverName=result["serverName"]))
+                return res
+            else:
+                print(f"##########\nException: Get all users request ERROR!\n{text}\n##########")
+                return None
+
+    @classmethod
     async def get_user_by(cls, ID: str = "", TG: str = "", KEY: str = "") -> None | User:
         if ID:
             filters = {'filter_type': 'AND',

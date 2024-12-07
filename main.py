@@ -2,16 +2,16 @@ import asyncio
 import logging
 import sys
 
-from aiogram import Bot, Dispatcher, F
-from aiogram.client.default import DefaultBotProperties
+from aiogram import Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from frontend.replys import *
 from backend.database.users import UsersDatabase
 from backend.models import User
 from frontend.user.handlers import router as user_router
 from frontend.admin.handlers import router as admin_router
+from frontend.notifications.handlers import router as notifications_router
 from backend.outline.managers import SERVERS
 from globals import *
 
@@ -20,7 +20,6 @@ dp = Dispatcher()
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
-
     await message.answer(REPLY_REGISTRATION, reply_markup=MENU_KEYBOARD_MARKUP)
 
 
@@ -59,7 +58,7 @@ async def admin_menu(message: Message):
             [InlineKeyboardButton(text="Создать ключ", callback_data="admin_create_key"),
              InlineKeyboardButton(text="Удалить ключ", callback_data="admin_delete_key")],
             [InlineKeyboardButton(text="Информация по юзеру", callback_data="admin_view_user")],
-            [InlineKeyboardButton(text="Транзакции", callback_data="admin_view_transactions")],
+            [InlineKeyboardButton(text="Оповещения", callback_data="admin_notifications_menu")],
         ]
     )
     await message.answer(f"Привет!\n‼ Сейчас идёт регистрация!\n\n😌 Не забывайте прогревать ГОЕВ❗❗❗", reply_markup=MENU_KEYBOARD_MARKUP)
@@ -92,7 +91,6 @@ async def menu(message: Message, *args, **kwargs):
             )
             await message.answer(PREREGISTRATION_MENU_REPLY, reply_markup=keyboard)
 
-
 @dp.message(F.text == "User")
 async def with_puree(message: Message):
     await message.reply("Вы гой")
@@ -104,7 +102,6 @@ async def without_puree(message: Message):
 
 
 async def main():
-    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
     await dp.start_polling(bot)
 
 
@@ -112,6 +109,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     dp.include_router(user_router)
     dp.include_router(admin_router)
+    dp.include_router(notifications_router)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

@@ -1,3 +1,5 @@
+from aiogram import Bot
+from aiogram.client.default import DefaultBotProperties
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from dotenv import load_dotenv
 from os import getenv
@@ -15,6 +17,7 @@ OUTLINE_CERT_SHA256_1 = getenv('CERT_SHA_1')
 OUTLINE_API_URL_2 = getenv('API_URL_2')
 OUTLINE_CERT_SHA256_2 = getenv('CERT_SHA_2')
 DB_TOKEN = getenv("DB_TOKEN")
+bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
 
 
 MENU_KEYBOARD_MARKUP = ReplyKeyboardMarkup(

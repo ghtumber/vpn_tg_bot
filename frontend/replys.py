@@ -1,3 +1,5 @@
+from pickle import GLOBAL
+
 REPLY_REGISTRATION = f"""
 👋 Приветствуем в proxym1ty!
 
@@ -32,7 +34,20 @@ USER_GREETING_REPLY = lambda username, paymentSum, paymentDate, serverName, serv
 
 🛰 <b>Сервер</b>: {serverName}
 🏳 <b>Страна VPN</b>: {serverLocation}
-💳 <b>Следующая оплата</b> — {paymentSum}руб. {paymentDate}
+💳 <b>Следующая оплата</b> — {paymentSum}руб. {paymentDate.strftime("%d.%m.%Y")}
 
 ⚡ Вот что можно посмотреть.
+"""
+
+PAYD_PERIOD_ENDING = lambda user: f"""
+<b>{user.userTG} внимание!</b>
+⌚ <i>У вас заканчивается оплаченный период использования VPN!</i>
+💳 Подписку нужно оплатить до <b>{user.paymentDate.strftime("%d.%m.%Y")}</b>
+💸 В этом месяце вам нужно заплатить <b>{user.paymentSum}руб.</b>
+"""
+
+
+GLOBAL_ALERT = lambda user, alert: f"""
+<b>{user.userTG} внимание!</b>
+‼ {alert}
 """
