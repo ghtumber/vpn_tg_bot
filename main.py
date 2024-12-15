@@ -93,14 +93,6 @@ async def menu(message: Message, *args, **kwargs):
             await message.answer(PREREGISTRATION_MENU_REPLY, reply_markup=keyboard)
 
 
-@dp.message(F.text == "User")
-async def with_puree(message: Message):
-    await message.reply("Вы гой")
-
-
-@dp.message(F.text == "Admin")
-async def without_puree(message: Message):
-    await message.reply("Прогревайте гоев")
 
 
 async def main():

@@ -1,7 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from dotenv import load_dotenv
 from os import getenv
-
+import ssl
 load_dotenv()
 
 """DEBUG MODE MUST BE DISABLED ON PROD"""
@@ -16,6 +16,9 @@ OUTLINE_API_URL_2 = getenv('API_URL_2')
 OUTLINE_CERT_SHA256_2 = getenv('CERT_SHA_2')
 DB_TOKEN = getenv("DB_TOKEN")
 
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
 
 MENU_KEYBOARD_MARKUP = ReplyKeyboardMarkup(
         keyboard=[
