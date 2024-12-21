@@ -14,45 +14,11 @@ PASSWORD = getenv("PASSWORD")
 
 
 @dataclass()
-class Client:
-    email: str
-    enable: bool
-    expiryTime: int
-    limitIp: int
-    reset: int
-    tgId: int
-    totalGB: int
-    subId: str
-    flow: str =  None
-    password: str = None
-    id: str = None
-    key: str = None
 
-    @staticmethod
-    def create_from_dict(dct):
-        flow = None
-        if "flow" in dct.keys():
-            flow = dct["flow"]
-        password = None
-        if "password" in dct.keys():
-            password = dct["password"]
-        subId = None
-        if "subId" in dct.keys():
-            subId = dct["subId"]
-        return Client(id=dct["id"], reset=dct["reset"], enable=dct["enable"], totalGB=dct["totalGB"], expiryTime=dct["expiryTime"],
-                                tgId=dct["tgId"], limitIp=dct["limitIp"], email=dct["email"], flow=flow, password=password, subId=subId)
-
-    def for_api(self):
-        if self.flow:
-            return {"uuid": self.id,"email": self.email, "enable": self.enable, "expiryTime": self.expiryTime, "flow": self.flow,
-                    "limitIp": self.limitIp, "reset": self.reset, "tgId": self.tgId, "totalGB": self.totalGB}
-        return {"email": self.email, "enable": self.enable, "expiryTime": self.expiryTime, "password": self.password,
-                "limitIp": self.limitIp, "reset": self.reset, "tgId": self.tgId, "totalGB": self.totalGB}
 
 
 class XServer:
     def __init__(self, login, password, ip, port, path):
-        self.name = f"XServer@{ip}"
         self.username = login
         self.password = password
         self.ip = ip
@@ -92,11 +58,8 @@ class XServer:
             return js["obj"]
         raise Exception("Get data exception! Check: URI, COOKIES")
 
-    async def get_client_traffics(self, email: str = None, uuid: str = None) -> dict | None:
-        """
-        Return client traffics data by email or uuid
-        USED = DOWN + UP
-        """
+    async def get_client_traffics(self, email: str = None, uuid: str = None) -> dict:
+        """Return client traffics data by email or uuid"""
         if email:
             link = f"https://{self.ip}:{self.port}/{self.path}/panel/api/inbounds/getClientTraffics/{email}"
         elif uuid:
@@ -107,8 +70,6 @@ class XServer:
             resp = await s.get(url=link, ssl=ssl_context, cookies=self.login_cookies)
         if resp.status == 200:
             js = await resp.json()
-            if not js["obj"]:
-                return None
             return js["obj"] if type(js["obj"]) == dict else js["obj"][0]
         raise Exception("Get data exception! Check: URI, COOKIES")
 
@@ -202,7 +163,7 @@ class Inbound:
                         enable=True, tgId=tgId, reset=0)
         settings = {"clients": [client.for_api()]}
         data = {
-            "uuid": self.id,
+            "id": self.id,
             "settings": json.dumps(obj=settings)
         }
         async with aiohttp.ClientSession() as s:
@@ -220,11 +181,11 @@ class Inbound:
         u = client.for_api()
         u_keys = u.keys()
         for k, v  in changes.items():
-            if k in u_keys and k != 'uuid':
+            if k in u_keys and k != 'id':
                 u[k] = v
         settings = {"clients": [u]}
         data = {
-            "uuid": self.id,
+            "id": self.id,
             "settings": json.dumps(obj=settings)
         }
         async with aiohttp.ClientSession() as s:
@@ -266,7 +227,7 @@ class Inbound:
             sid = self.streamSettings["realitySettings"]["shortIds"][0]
             spx = self.streamSettings["realitySettings"]["settings"]["spiderX"]
             flow = client_data["clients"][0]["flow"]
-            client_id = client_data["clients"][0]["uuid"]
+            client_id = client_data["clients"][0]["id"]
             key = f"{self.protocol}://{client_id}@{self.server.ip}:{self.vpn_port}?type={type}&security={security}&pbk={pbk}&fp={fp}&sni={sni}&sid={sid}&spx={spx}&flow={flow}#PROXYM1TY"
             return key
         raise Exception(f"Key forming error. Check data exist! {self.protocol=}")
@@ -276,9 +237,7 @@ async def main():
     server = XServer(ip="94.159.100.60", port=59999, path="PROXY", login=LOGIN, password=PASSWORD)
     await server.get_inbounds()
     inb: Inbound = server.inbounds[0]
-    client = Client.create_from_dict(inb.settings["clients"][2])
-    traffic = await server.get_client_traffics(uuid=client.id)
-    print(traffic)
+    client = Client.create_from_dict(inb.settings["clients"][1])
     # await inb.update_client(client=client, changes={})
     # client = await inb.add_client(email="OK_now", expiryTime=1733832000000, totalBytes=600*1024**3)
     # print(client)
@@ -286,13 +245,4 @@ async def main():
     # print("Before", client)
     # await inb.update_client(client=client, changes={"email": "letsTest"})
     # print("After", inb.settings["clients"][1])
-#asyncio.run(main())
-
-
-async def GET_XSERVERS() -> list[XServer]:
-    XSERVERS = [XServer(ip="94.159.100.60", port=59999, path="PROXY", login=LOGIN, password=PASSWORD)]
-    for server in XSERVERS:
-        await server.get_inbounds()
-    return XSERVERS
-
-
+asyncio.run(main())

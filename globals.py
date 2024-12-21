@@ -8,6 +8,7 @@ from os import getenv
 
 from backend.xapi.tests import GET_XSERVERS
 
+import ssl
 load_dotenv()
 
 """DEBUG MODE MUST BE DISABLED ON PROD"""
@@ -28,6 +29,9 @@ get_servers()
 DB_TOKEN = getenv("DB_TOKEN")
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
 
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
 
 MENU_KEYBOARD_MARKUP = ReplyKeyboardMarkup(
         keyboard=[
