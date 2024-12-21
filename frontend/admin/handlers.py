@@ -39,7 +39,7 @@ async def handle_cancel(message: Message):
     await message.answer("Отмена?", reply_markup=kb)
 
 
-@router.callback_query((F.data == "admin_create_key") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_create_key") & (F.message.from_user.uuid in ADMINS))
 async def handle_create_key(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
 
@@ -101,7 +101,7 @@ async def handle_key_data_limiting(message: Message, state: FSMContext):
     await message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)
 
 
-@router.callback_query((F.data == "admin_delete_key") & (F.message.from_user.id in ADMINS)) # TODO: Add server selection
+@router.callback_query((F.data == "admin_delete_key") & (F.message.from_user.uuid in ADMINS)) # TODO: Add server selection
 async def handle_create_key(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
 
@@ -164,11 +164,11 @@ async def handle_key_removal_identification(message: Message, state: FSMContext)
 @router.message(KeyRemoval.confirmation)
 async def handle_key_naming(message: Message, state: FSMContext):
     data = await state.get_data()
-    info = data["server"].get_key_info(str(data["id"]))
+    info = data["server"].get_key_info(str(data["uuid"]))
     if info is None:
         await message.answer(text="Ошибка ❗\nТакого ключа не существует 😑")
         return 0
-    data["server"].delete_key(str(data["id"]))
+    data["server"].delete_key(str(data["uuid"]))
     answer = f"""
 ‼ <b>Ключ удалён</b>
 📛 <b>Название</b>: {info.name}

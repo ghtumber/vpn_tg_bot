@@ -26,7 +26,7 @@ class UsersDatabase:
                 res = []
                 for result in results:
                     PD = result["PaymentDate"].split("-")
-                    res.append(User(id=int(result["id"]), userID=int(result["userID"]), userTG=result["userTG"], keyID=int(result["keyID"]), key=result["key"],
+                    res.append(User(id=int(result["uuid"]), userID=int(result["userID"]), userTG=result["userTG"], keyID=int(result["keyID"]), key=result["key"],
                             keyLimit=float(result["keyLimit"]), PaymentSum=int(result["PaymentSum"]), PaymentDate=date(int(PD[0]), int(PD[1]), int(PD[2])), serverName=result["serverName"]))
                 return res
             else:
@@ -59,7 +59,7 @@ class UsersDatabase:
             if response.status == 200 and len(u["results"]) > 0:
                 u = u["results"][0]
                 PD = u["PaymentDate"].split("-")
-                return User(id=int(u["id"]), userID=int(u["userID"]), userTG=u["userTG"], keyID=int(u["keyID"]), key=u["key"],
+                return User(id=int(u["uuid"]), userID=int(u["userID"]), userTG=u["userTG"], keyID=int(u["keyID"]), key=u["key"],
                             keyLimit=float(u["keyLimit"]), PaymentSum=int(u["PaymentSum"]), PaymentDate=date(int(PD[0]), int(PD[1]), int(PD[2])), serverName=u["serverName"])
             else:
                 print(f"##########\nException: Get request ERROR!\n{text}\n##########")
@@ -90,7 +90,7 @@ class UsersDatabase:
                 print(f"###CREATED USER###\nCREATED: {text}\n#########")
                 u = json.loads(text)
                 PD = u["PaymentDate"].split("-")
-                return User(id=u["id"], userID=u["userID"], userTG=u["userTG"], keyID=u["keyID"], key=u["key"], keyLimit=u["keyLimit"],
+                return User(id=u["uuid"], userID=u["userID"], userTG=u["userTG"], keyID=u["keyID"], key=u["key"], keyLimit=u["keyLimit"],
                             PaymentSum=u["PaymentSum"], PaymentDate=date(int(PD[0]), int(PD[1]), int(PD[2])), serverName=u["serverName"])
             else:
                 return Exception(f"Create request ERROR!\n{text}")
@@ -127,7 +127,7 @@ class UsersDatabase:
                 print(f"###UPDATED USER###\nCHANGED: {change}\nUPDATED: {text}\n#########")
                 u = json.loads(text)
                 PD = u["PaymentDate"].split("-")
-                return User(id=u["id"], userID=u["userID"], userTG=u["userTG"], keyID=u["keyID"], key=u["key"], keyLimit=u["keyLimit"],
+                return User(id=u["uuid"], userID=u["userID"], userTG=u["userTG"], keyID=u["keyID"], key=u["key"], keyLimit=u["keyLimit"],
                             PaymentSum=u["PaymentSum"], PaymentDate=date(int(PD[0]), int(PD[1]), int(PD[2])), serverName=u["serverName"])
             else:
                 return Exception(f"!!! Update request ERROR!\n{text}")

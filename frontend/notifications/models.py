@@ -1,6 +1,6 @@
 from frontend.replys import GLOBAL_ALERT, PAYD_PERIOD_ENDING
 from globals import bot, ADMINS, MENU_KEYBOARD_MARKUP
-from backend.models import Client, User
+from backend.models import XClient, User
 
 
 class PeriodEndingNotification:

@@ -1,23 +1,49 @@
+import datetime
+
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
 from frontend.admin.handlers import CANCEL_KB, handle_cancel
-from backend.models import User
+from backend.models import User, XClient
 from frontend.notifications.models import GlobalNotification
-from datetime import date
+from datetime import date, timedelta
 from frontend.replys import *
 from backend.database.users import UsersDatabase
-from globals import DEBUG
-
+from globals import DEBUG, bot, XSERVERS
+from backend.xapi.tests import GET_XSERVERS
 
 router = Router()
+period_checker_scheduler = AsyncIOScheduler()
+
 
 class GlobalNotificationState(StatesGroup):
     text = State()
     confirmation = State()
+
+async def check_period():
+    # all_users = await UsersDatabase.get_all_users()
+    dat = date(day=1, month=1, year=2025)
+    xclient = XClient(uuid="9d439b90-8e77-4e49-b845-f1afe8dd67a7", email="OK_now", enable=True, expiryTime=1734256800744, reset=0, tgId=5475897905, totalGB=644245094400)
+    all_users = [User(id=1, userID=5475897905, userTG="@M1rtex", PaymentSum=200, PaymentDate=dat, serverName="XServer@94.159.100.60", xclient=xclient)]
+    now = datetime.datetime.now()
+    for user in all_users:
+        if user.xclient:
+            if (now - datetime.datetime.fromtimestamp(user.xclient.expiryTime//1000)) < timedelta(days=2):
+                await bot.send_message(chat_id=user.userID, text=PAYD_PERIOD_ENDING(user))
+                continue
+            for server in XSERVERS:
+                if server.name == user.serverName:
+                    user_traffic = await server.get_client_traffics(uuid=user.xclient.uuid)
+                    user_traffic = user_traffic["up"] + user_traffic["down"]
+                    break
+            if (user.xclient.totalGB - user_traffic) < 5*1024**3:
+                await bot.send_message(chat_id=user.userID, text=TRAFFICS_ENDING(user, user.xclient.totalGB - user_traffic))
+                continue
+
 
 @router.callback_query(F.data == "admin_notifications_menu")
 async def handle_admin_notifications_menu(callback: CallbackQuery):
@@ -61,3 +87,6 @@ async def handle_admin_send_global_notification_state_2(message: Message, state:
         notif = GlobalNotification(text=data["text"], users_to=all_users, callback_to=message.from_user.id)
         success = await notif.send()
         await state.clear()
+
+
+period_checker_scheduler.add_job(func=check_period, trigger="interval", seconds=30) #TODO: Remove it

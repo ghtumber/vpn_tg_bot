@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import sys
-
 from aiogram import Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
@@ -14,6 +13,7 @@ from frontend.admin.handlers import router as admin_router
 from frontend.notifications.handlers import router as notifications_router
 from backend.outline.managers import SERVERS
 from globals import *
+from frontend.notifications.handlers import period_checker_scheduler, check_period
 
 dp = Dispatcher()
 
@@ -68,7 +68,7 @@ async def admin_menu(message: Message):
 @dp.message(F.text.contains("Menu"))
 async def menu(message: Message, *args, **kwargs):
     if "callback" in kwargs.keys():
-        user_id = kwargs["callback"].from_user.id
+        user_id = kwargs["callback"].from_user.uuid
     else:
         user_id = message.from_user.id
     if user_id in ADMINS:
@@ -102,7 +102,9 @@ async def without_puree(message: Message):
 
 
 async def main():
+    period_checker_scheduler.start()
     await dp.start_polling(bot)
+
 
 
 if __name__ == "__main__":
@@ -110,6 +112,7 @@ if __name__ == "__main__":
     dp.include_router(user_router)
     dp.include_router(admin_router)
     dp.include_router(notifications_router)
+    # period_checker_scheduler.add_job(func=check_period, trigger="interval", seconds=300)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
