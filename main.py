@@ -20,7 +20,16 @@ dp = Dispatcher()
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
-    await message.answer(REPLY_REGISTRATION, reply_markup=MENU_KEYBOARD_MARKUP)
+    user_resp = await UsersDatabase.get_user_by(TG="@" + message.from_user.username)
+    if user_resp:
+        await message.answer(REPLY_REGISTRATION, reply_markup=MENU_KEYBOARD_MARKUP)
+    else:
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="Регистрация", callback_data="user_registration")]
+            ]
+        )
+        await message.answer(REPLY_REGISTRATION, reply_markup=keyboard)
 
 
 @dp.callback_query(F.data == "back_to_menu")
@@ -38,11 +47,12 @@ async def to_menu(callback: CallbackQuery, state: FSMContext):
     if state:
         await state.clear()
     await callback.answer(text="")
-    await callback.message.edit_reply_markup()
     if callback.from_user.id in ADMINS:
         await admin_menu(callback.message)
     else:
-        await menu(callback.message)
+        m = await callback.message.answer("🔃 Загрузка~", reply_markup=MENU_KEYBOARD_MARKUP)
+        await menu(callback.message, callback=callback)
+        await m.delete()
     await callback.message.delete()
 
 
@@ -55,10 +65,10 @@ async def cancel_of_cancel(callback: CallbackQuery):
 async def admin_menu(message: Message):
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Создать ключ", callback_data="admin_create_key"),
-             InlineKeyboardButton(text="Удалить ключ", callback_data="admin_delete_key")],
-            [InlineKeyboardButton(text="Информация по юзеру", callback_data="admin_view_user")],
+            [InlineKeyboardButton(text="Управление XServers", callback_data="admin_manage_xservers"),
+             InlineKeyboardButton(text="Управление Outline", callback_data="admin_manage_outlines")],
             [InlineKeyboardButton(text="Оповещения", callback_data="admin_notifications_menu")],
+            [InlineKeyboardButton(text="Просмотр UsersDB", callback_data="admin_get_user_info")]
         ]
     )
     await message.answer(f"Привет!\n‼ Сейчас идёт регистрация!\n\n😌 Не забывайте прогревать ГОЕВ❗❗❗", reply_markup=MENU_KEYBOARD_MARKUP)
@@ -68,7 +78,7 @@ async def admin_menu(message: Message):
 @dp.message(F.text.contains("Menu"))
 async def menu(message: Message, *args, **kwargs):
     if "callback" in kwargs.keys():
-        user_id = kwargs["callback"].from_user.uuid
+        user_id = kwargs["callback"].from_user.id
     else:
         user_id = message.from_user.id
     if user_id in ADMINS:
@@ -76,20 +86,34 @@ async def menu(message: Message, *args, **kwargs):
     else:
         user: User = await UsersDatabase.get_user_by(ID=str(user_id))
         if user:
-            keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="📊 Использование VPN", callback_data="vpn_usage")],
-                [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="view_user_key")],
-                [InlineKeyboardButton(text="📘 Инструкции", callback_data="get_instructions")]
-            ])
-            server = [s for s in SERVERS if s.name == user.serverName][0]
-            await message.answer(text=USER_GREETING_REPLY(username=user.userTG, paymentSum=user.PaymentSum, paymentDate=user.PaymentDate, serverName=user.serverName, serverLocation=server.location), reply_markup=keyboard)
+            if user.xclient:
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="📊 Использование VPN", callback_data="xclient_vpn_usage")],
+                    [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="view_user_key")],
+                    [InlineKeyboardButton(text="📘 Инструкции", callback_data=f"get_{user.Protocol}_instructions")]
+                ])
+                server = [s for s in XSERVERS if s.name == user.serverName][0]
+            elif user.outline_client:
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="view_user_key")],
+                    [InlineKeyboardButton(text="📘 Инструкции", callback_data="get_outline_instructions")]
+                ])
+                server = [s for s in SERVERS if s.name == user.serverName][0]
+            else:
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔓 Купить ключ", callback_data="buy_key")],
+                    [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="uptop_user_balance")]
+                ])
+                await message.answer(text=CLEAN_USER_GREETING_REPLY(user_balance=user.moneyBalance, username=user.userTG), reply_markup=keyboard)
+                return
+            await message.answer(text=USER_GREETING_REPLY(username=user.userTG, paymentSum=user.PaymentSum, paymentDate=user.PaymentDate, serverName=user.serverName, serverLocation=server.location, user_balance=user.moneyBalance), reply_markup=keyboard)
         else:
             keyboard = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="Регистрация", callback_data="user_registration")]
                 ]
             )
-            await message.answer(PREREGISTRATION_MENU_REPLY, reply_markup=keyboard)
+            await message.answer(REPLY_REGISTRATION, reply_markup=keyboard)
 
 @dp.message(F.text == "User")
 async def with_puree(message: Message):
@@ -112,7 +136,6 @@ if __name__ == "__main__":
     dp.include_router(user_router)
     dp.include_router(admin_router)
     dp.include_router(notifications_router)
-    # period_checker_scheduler.add_job(func=check_period, trigger="interval", seconds=300)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

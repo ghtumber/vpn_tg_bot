@@ -7,10 +7,15 @@ import aiohttp
 from dotenv import load_dotenv
 from os import getenv
 from datetime import datetime, timedelta
-from globals import ssl_context
+import ssl
+
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
+
 load_dotenv()
-LOGIN = getenv("LOGIN")
-PASSWORD = getenv("PASSWORD")
+LOGIN = getenv("SERVER_LOGIN")
+PASSWORD = getenv("SERVER_PASSWORD")
 
 
 @dataclass()
@@ -272,13 +277,21 @@ class Inbound:
         raise Exception(f"Key forming error. Check data exist! {self.protocol=}")
 
 
+async def GET_XSERVERS() -> list[XServer]:
+    XSERVERS = [XServer(ip="94.159.100.60", port=59999, path="PROXY", login=LOGIN, password=PASSWORD)]
+    for server in XSERVERS:
+        await server.get_inbounds()
+    return XSERVERS
+
+
 async def main():
     server = XServer(ip="94.159.100.60", port=59999, path="PROXY", login=LOGIN, password=PASSWORD)
     await server.get_inbounds()
-    inb: Inbound = server.inbounds[0]
-    client = Client.create_from_dict(inb.settings["clients"][2])
-    traffic = await server.get_client_traffics(uuid=client.id)
-    print(traffic)
+    inb: Inbound = server.inbounds[1]
+    print(inb.protocol)
+    # client = Client.create_from_dict(inb.settings["clients"][1])
+    # traffic = await server.get_client_traffics(uuid=client.id)
+    # print(traffic)
     # await inb.update_client(client=client, changes={})
     # client = await inb.add_client(email="OK_now", expiryTime=1733832000000, totalBytes=600*1024**3)
     # print(client)
@@ -286,13 +299,7 @@ async def main():
     # print("Before", client)
     # await inb.update_client(client=client, changes={"email": "letsTest"})
     # print("After", inb.settings["clients"][1])
-#asyncio.run(main())
 
-
-async def GET_XSERVERS() -> list[XServer]:
-    XSERVERS = [XServer(ip="94.159.100.60", port=59999, path="PROXY", login=LOGIN, password=PASSWORD)]
-    for server in XSERVERS:
-        await server.get_inbounds()
-    return XSERVERS
+asyncio.run(main())
 
 

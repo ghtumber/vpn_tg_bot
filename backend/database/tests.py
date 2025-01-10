@@ -157,9 +157,11 @@ async def delete_user(user: dict):
 
 
 async def main():
-    user = User(id=16, userID=1234567, userTG='TestTG', keyID=30, key='ss://LOLtest', keyLimit=0, PaymentSum=100)
-    res = await get_user_by(ID="5475897905")  # "PaymentDate":"2024-12-01","serverName":"Micro"
+    #user = User(id=16, userID=1234567, userTG='TestTG', keyID=30, key='ss://LOLtest', keyLimit=0, PaymentSum=100)
+    res = await get_user_by(ID="902448626")  # "PaymentDate":"2024-12-01","serverName":"Micro"
     print(res)
+    js = json.loads(res)
+    print(js["results"][0]["uuid"])
 
 
 asyncio.run(main())

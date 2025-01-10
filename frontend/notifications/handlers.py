@@ -14,7 +14,6 @@ from datetime import date, timedelta
 from frontend.replys import *
 from backend.database.users import UsersDatabase
 from globals import DEBUG, bot, XSERVERS
-from backend.xapi.tests import GET_XSERVERS
 
 router = Router()
 period_checker_scheduler = AsyncIOScheduler()
@@ -25,21 +24,24 @@ class GlobalNotificationState(StatesGroup):
     confirmation = State()
 
 async def check_period():
-    # all_users = await UsersDatabase.get_all_users()
-    dat = date(day=1, month=1, year=2025)
-    xclient = XClient(uuid="9d439b90-8e77-4e49-b845-f1afe8dd67a7", email="OK_now", enable=True, expiryTime=1734256800744, reset=0, tgId=5475897905, totalGB=644245094400)
-    all_users = [User(id=1, userID=5475897905, userTG="@M1rtex", PaymentSum=200, PaymentDate=dat, serverName="XServer@94.159.100.60", xclient=xclient)]
+    all_users = await UsersDatabase.get_all_users(size=3000)
+    if DEBUG:
+        print(f"check_period() execution in DEBUG mode")
+        dat = date(day=1, month=1, year=2025)
+        xclient = XClient(uuid="9d439b90-8e77-4e49-b845-f1afe8dd67a7", email="OK_now", enable=True, expiryTime=1734256800744, reset=0, tgId=5475897905, totalGB=644245094400)
+        all_users = [User(id=1, userID=5475897905, userTG="@M1rtex", PaymentSum=200, PaymentDate=dat, serverName="XServer@94.159.100.60", xclient=xclient, serverType="XSERVER", Protocol="VLESS", lastPaymentDate=dat)]
     now = datetime.datetime.now()
     for user in all_users:
+        for svr in XSERVERS:
+            if svr.name == user.serverName:
+                user.xclient = svr.get_client_info(uuid=user.uuid)
+                user_traffic = await svr.get_client_traffics(uuid=user.xclient.uuid)
+                user_traffic = user_traffic["up"] + user_traffic["down"]
+                break
         if user.xclient:
-            if (now - datetime.datetime.fromtimestamp(user.xclient.expiryTime//1000)) < timedelta(days=2):
+            if timedelta(days=3) > (now - datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000)) >= timedelta(days=0):
                 await bot.send_message(chat_id=user.userID, text=PAYD_PERIOD_ENDING(user))
                 continue
-            for server in XSERVERS:
-                if server.name == user.serverName:
-                    user_traffic = await server.get_client_traffics(uuid=user.xclient.uuid)
-                    user_traffic = user_traffic["up"] + user_traffic["down"]
-                    break
             if (user.xclient.totalGB - user_traffic) < 5*1024**3:
                 await bot.send_message(chat_id=user.userID, text=TRAFFICS_ENDING(user, user.xclient.totalGB - user_traffic))
                 continue
@@ -80,13 +82,13 @@ async def handle_admin_send_global_notification_state_2(message: Message, state:
     if message.text.strip() == "✅ Да":
         await state.update_data(confirmation=True)
         data = await state.get_data()
-        all_users = await UsersDatabase.get_all_users()
+        all_users = await UsersDatabase.get_all_users(size=3000)
         if DEBUG:
-            all_users = [User(userID=902448626, userTG="@M1rtexFAde", id=0, keyID=0, key="ss://123", PaymentSum=120, PaymentDate=date(2024, 12, 20), keyLimit=999, serverName="LOL"),
-                      User(userID=863746464, userTG="@Anxious666Japan", id=0, keyID=0, key="ss://123", PaymentSum=120, PaymentDate=date(2024, 12, 20), keyLimit=999, serverName="LOL")]
+            all_users = [User(userID=902448626, userTG="@M1rtexFAde", id=0, keyID=0, key="ss://123", PaymentSum=120, PaymentDate=date(2024, 12, 31), keyLimit=999, serverName="LOL"),
+                      User(userID=863746464, userTG="@Anxious666Japan", id=0, keyID=0, key="ss://123", PaymentSum=120, PaymentDate=date(2024, 12, 31), keyLimit=999, serverName="LOL")]
         notif = GlobalNotification(text=data["text"], users_to=all_users, callback_to=message.from_user.id)
         success = await notif.send()
         await state.clear()
 
 
-period_checker_scheduler.add_job(func=check_period, trigger="interval", seconds=30) #TODO: Remove it
+# period_checker_scheduler.add_job(func=check_period, day_of_week='mon-sun', trigger="cron", hour=14, minute=30) #TODO: change to normal
