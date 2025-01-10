@@ -1,76 +1,55 @@
 import asyncio
+import ssl
+import string, random
+import os
 from dataclasses import dataclass
 import json
 import uuid
 from http.cookies import SimpleCookie
 import aiohttp
+import base64
 from dotenv import load_dotenv
 from os import getenv
 from datetime import datetime, timedelta
-from globals import ssl_context
+from backend.models import XClient
 load_dotenv()
-LOGIN = getenv("LOGIN")
-PASSWORD = getenv("PASSWORD")
 
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
 
 @dataclass()
-class Client:
-    email: str
-    enable: bool
-    expiryTime: int
-    limitIp: int
-    reset: int
-    tgId: int
-    totalGB: int
-    subId: str
-    flow: str =  None
-    password: str = None
-    id: str = None
-    key: str = None
-
-    @staticmethod
-    def create_from_dict(dct):
-        flow = None
-        if "flow" in dct.keys():
-            flow = dct["flow"]
-        password = None
-        if "password" in dct.keys():
-            password = dct["password"]
-        subId = None
-        if "subId" in dct.keys():
-            subId = dct["subId"]
-        return Client(id=dct["id"], reset=dct["reset"], enable=dct["enable"], totalGB=dct["totalGB"], expiryTime=dct["expiryTime"],
-                                tgId=dct["tgId"], limitIp=dct["limitIp"], email=dct["email"], flow=flow, password=password, subId=subId)
-
-    def for_api(self):
-        if self.flow:
-            return {"id": self.id,"email": self.email, "enable": self.enable, "expiryTime": self.expiryTime, "flow": self.flow,
-                    "limitIp": self.limitIp, "reset": self.reset, "tgId": self.tgId, "totalGB": self.totalGB}
-        return {"email": self.email, "enable": self.enable, "expiryTime": self.expiryTime, "password": self.password,
-                "limitIp": self.limitIp, "reset": self.reset, "tgId": self.tgId, "totalGB": self.totalGB}
-
-
 class XServer:
-    def __init__(self, login, password, ip, port, path):
-        self.username = login
-        self.password = password
+    LOGIN = getenv("SERVER_LOGIN")
+    PASSWORD = getenv("SERVER_PASSWORD")
+    def __init__(self, ip, port, path, location="🇩🇪Germany"):
+        self.name = f"XServer@{ip}"
+        self.location = location
         self.ip = ip
         self.port = port
         self.path = path
         self.inbounds = list()
         self.login_cookies = SimpleCookie()
         self.session_start_time = datetime(2000, 1, 1)
+        self.last_update_time = datetime(2000, 1, 1)
 
     async def get_session(self) -> SimpleCookie:
         now = datetime.today()
         if (now - self.session_start_time) > timedelta(hours=1):
             await self.login()
+            self.session_start_time = now
         return self.login_cookies
+
+    async def check_data(self):
+        now = datetime.today()
+        if (now - self.last_update_time) > timedelta(minutes=10):
+            await self.get_inbounds()
+            self.last_update_time = now
 
     async def login(self):
         """Logins into system and returns self"""
         async with aiohttp.ClientSession() as session:
-            data = {"username": self.username, "password": self.password}
+            data = {"username": self.LOGIN, "password": self.PASSWORD}
             resp = await session.post(url=f"https://{self.ip}:{self.port}/{self.path}/login", data=data, ssl=ssl_context)
         if resp.status == 200:
             js = await resp.json()
@@ -106,6 +85,35 @@ class XServer:
             return js["obj"] if type(js["obj"]) == dict else js["obj"][0]
         raise Exception("Get data exception! Check: URI, COOKIES")
 
+    async def get_client_info(self, identifier: str) -> XClient | None:
+        """
+        Returns XClient object or None(if not found)
+        identifier = UUID or email!!!
+        """
+        await self.check_data()
+        for inb in self.inbounds:
+            clients = inb.settings["clients"]
+            for client_dict in clients:
+                if "id" in client_dict.keys():
+                    if client_dict["id"] == identifier:
+                        # print(f"get_client_info() -> {client_dict}")
+                        return XClient.create_from_dict(dct=client_dict)
+                elif "password" in client_dict.keys():
+                    if client_dict["email"] == identifier:
+                        return  XClient.create_from_dict(dct=client_dict)
+        return None
+
+    async def get_all_clients(self) -> list[XClient]:
+        """Returns list of XClients or None"""
+        await self.check_data()
+        res = []
+        for inb in self.inbounds:
+            clients = inb.settings["clients"]
+            print(f"{clients=}")
+            for client in clients:
+                res.append(XClient.create_from_dict(dct=client))
+        return res if res else None
+
     async def get_client_ips(self, email: str):
         """Must return all clients devices ips, but returns nothing :)"""
         async with aiohttp.ClientSession() as s:
@@ -135,9 +143,11 @@ class XServer:
                         predata["sniffing"] = json.loads(inb["sniffing"])
                         predata["protocol"] = inb["protocol"]
                         predata["vpn_port"] = inb["port"]
+                        predata["clientStats"] = inb["clientStats"]
                         if inb["allocate"] != '':
                             predata["allocate"] = json.loads(inb["allocate"])
                         self.inbounds.append(Inbound(id=inb_id, server=self, predata=predata))
+                self.last_update_time = datetime.today()
                 return self
         raise Exception(f"[{resp.status}]Get data exception! Check: URI, COOKIES")
 
@@ -152,6 +162,7 @@ class Inbound:
         self.streamSettings = dict()
         self.sniffing = dict()
         self.allocate = dict()
+        self.clientStats = list()
         self._process_predata(predata=predata)
 
     def _process_predata(self, predata: dict):
@@ -161,6 +172,7 @@ class Inbound:
             self.settings = predata["settings"]
             self.streamSettings = predata["streamSettings"]
             self.sniffing = predata["sniffing"]
+            self.clientStats = predata["clientStats"]
             if "allocate" in predata.keys():
                 self.allocate = predata["allocate"]
 
@@ -175,11 +187,14 @@ class Inbound:
                     raise Exception(f"[{resp.status}]Get inbound data exception! {js['msg']}")
                 obj = js["obj"]
                 self.settings = json.loads(obj["settings"])
+                # супер странная часть кода
+                # ------------------------------------
                 clients = []
                 for c in self.settings["clients"]:
-                    client = Client.create_from_dict(c)
+                    client = XClient.create_from_dict(c)
                     clients.append(client)
-                self.settings["clients"] = clients
+                # self.settings["clients"] = clients
+                # -------------------------------------
                 self.streamSettings = json.loads(obj["streamSettings"])
                 self.sniffing = json.loads(obj["sniffing"])
                 self.protocol = obj["protocol"]
@@ -189,16 +204,29 @@ class Inbound:
                 return self
         raise Exception(f"[{resp.status}]Get data exception! Check: URI, COOKIES")\
 
-    async def add_client(self, email: str, tgId: int = None, expiryTime: int = 0, totalBytes: int = 0) -> Client:
+    async def add_client(self, email: str, tgId: int = 0, expiryTime: int = 0, totalBytes: int = 0) -> XClient:
         """Adds client to inbound, returns client with key"""
         await self.server.get_session()
-        client = Client(id=str(uuid.uuid4()), flow="xtls-rprx-vision", email=email, limitIp=0, totalGB=totalBytes, expiryTime=expiryTime,
-                        enable=True, tgId=tgId, reset=0)
-        settings = {"clients": [client.for_api()]}
-        data = {
-            "id": self.id,
-            "settings": json.dumps(obj=settings)
-        }
+        if self.protocol == "vless":
+            client = XClient(uuid=str(uuid.uuid4()), flow="xtls-rprx-vision", email=email, limitIp=0, totalGB=totalBytes, expiryTime=expiryTime,
+                            enable=True, tgId=tgId, reset=0)
+            settings = {"clients": [client.for_api()]}
+            data = {
+                "id": self.id,
+                "settings": json.dumps(obj=settings)
+            }
+        if self.protocol == "shadowsocks":
+            random_bytes = os.urandom(32)
+            l = string.ascii_lowercase + string.digits
+            password = base64.standard_b64encode(random_bytes).decode()
+            subId = "".join(random.choice(l) for _ in range(16))
+            client = XClient(uuid=email, email=email, limitIp=0, totalGB=totalBytes, expiryTime=expiryTime, enable=True, tgId=tgId, reset=0,
+                             password=password, subId=subId)
+            settings = {"clients": [client.for_api()]}
+            data = {
+                "id": self.id,
+                "settings": json.dumps(obj=settings)
+            }
         async with aiohttp.ClientSession() as s:
             resp = await s.post(url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/addClient",
                                 ssl=ssl_context, data=data, cookies=self.server.login_cookies)
@@ -208,7 +236,7 @@ class Inbound:
             return client
         raise Exception(f"[{resp.status}]Add user exception! Check: URI, COOKIES")
 
-    async def update_client(self, client: Client, changes: dict) -> bool:
+    async def update_client(self, client: XClient, changes: dict) -> bool:
         """keys from user same to keys in changes!"""
         await self.server.get_session()
         u = client.for_api()
@@ -222,7 +250,7 @@ class Inbound:
             "settings": json.dumps(obj=settings)
         }
         async with aiohttp.ClientSession() as s:
-            resp = await s.post(url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/updateClient/{client.id}",
+            resp = await s.post(url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/updateClient/{client.uuid}",
                                 ssl=ssl_context, data=data, cookies=self.server.login_cookies)
             if resp.status == 200:
                 await self.get_data()
@@ -247,10 +275,12 @@ class Inbound:
                 url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/{self.id}/delClient/{client_id}",
                 ssl=ssl_context, cookies=self.server.login_cookies)
             if resp.status == 200:
+                await self.get_data()
                 return True
         raise Exception(f"[{resp.status}]REMOVING client exception! Check: URI, COOKIES")
 
     def form_key(self, client_data: dict[str: list[dict]]):
+        """client_data = {"clients": [client.for_api()]}"""
         if self.protocol == "vless":
             type = self.streamSettings["network"]
             security = self.streamSettings["security"]
@@ -263,19 +293,22 @@ class Inbound:
             client_id = client_data["clients"][0]["id"]
             key = f"{self.protocol}://{client_id}@{self.server.ip}:{self.vpn_port}?type={type}&security={security}&pbk={pbk}&fp={fp}&sni={sni}&sid={sid}&spx={spx}&flow={flow}#PROXYM1TY"
             return key
+        if self.protocol == "shadowsocks":
+            client_password = client_data['clients'][0]['password']
+            auth_info = f"{self.settings['method']}:{self.settings['password']}:{client_password}"
+            print(f"{auth_info=}")
+            auth_info_base64 = base64.standard_b64encode(auth_info.encode())
+            auth_info_base64 = str(auth_info_base64)[2:-1]
+            auth_info_base64 = auth_info_base64.replace("=", "")
+            network = self.streamSettings["network"]
+            key = f"ss://{auth_info_base64}@{self.server.ip}:{self.vpn_port}?type={network}#PROXYM1TY"
+            return key
         raise Exception(f"Key forming error. Check data exist! {self.protocol=}")
 
 
-async def main():
-    server = XServer(ip="94.159.100.60", port=59999, path="PROXY", login=LOGIN, password=PASSWORD)
-    await server.get_inbounds()
-    inb: Inbound = server.inbounds[0]
-    client = Client.create_from_dict(inb.settings["clients"][1])
-    # await inb.update_client(client=client, changes={})
-    # client = await inb.add_client(email="OK_now", expiryTime=1733832000000, totalBytes=600*1024**3)
-    # print(client)
-    # client = inb.settings["clients"][1]
-    # print("Before", client)
-    # await inb.update_client(client=client, changes={"email": "letsTest"})
-    # print("After", inb.settings["clients"][1])
-asyncio.run(main())
+
+async def GET_XSERVERS() -> list[XServer]:
+    XSERVERS = [XServer(ip="94.159.100.60", port=59999, path="PROXY")]
+    for server in XSERVERS:
+        await server.get_inbounds()
+    return XSERVERS

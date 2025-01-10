@@ -1,5 +1,5 @@
 from outline_vpn.outline_vpn import OutlineVPN, OutlineKey, OutlineServerErrorException
-from globals import OUTLINE_API_URL_1, OUTLINE_CERT_SHA256_1, OUTLINE_API_URL_2, OUTLINE_CERT_SHA256_2
+from globals import OUTLINE_API_URL_2, OUTLINE_CERT_SHA256_2
 
 
 class OutlineManager:
@@ -10,7 +10,7 @@ class OutlineManager:
 
     @staticmethod
     def gb_to_bytes(gb: float):
-        return gb * 1024 ** 3
+        return gb * 1000 ** 3
 
     def get_key_info_by_key(self, key: str) -> OutlineKey | None:
         for k in self.client.get_keys():
@@ -25,7 +25,9 @@ class OutlineManager:
             return None
 
     def create_new_key(self, name: str = None, data_limit_gb: float = None) -> OutlineKey:
-        return self.client.create_key(name=name, data_limit=self.gb_to_bytes(data_limit_gb))
+        key = self.client.create_key(name=name, data_limit=self.gb_to_bytes(data_limit_gb))
+        # print(f"create_new_key() -> {key=}") #TODO: FIX ID (ХЗ ЧТО С НИМ ВООБЩЕ СЛУЧИЛОСЬ, ОН КАКБЫ С СЕРВАКА НЕ ПРИХОДИТ...)
+        return key
 
     def delete_key(self, key_id: str) -> bool:
         return self.client.delete_key(key_id)
@@ -34,8 +36,7 @@ class OutlineManager:
         return self.client.add_data_limit(key_id, data_limit_bytes)
 
 
-OutlineManager_1 = OutlineManager(api_url=OUTLINE_API_URL_1, cert_sha256=OUTLINE_CERT_SHA256_1, name="Micro", location="🇩🇪Germany/🇺🇸USA")
 OutlineManager_2 = OutlineManager(api_url=OUTLINE_API_URL_2, cert_sha256=OUTLINE_CERT_SHA256_2, name="Start", location="🇩🇪Germany")
 
-SERVERS = [OutlineManager_1, OutlineManager_2]
+SERVERS = [OutlineManager_2]
 

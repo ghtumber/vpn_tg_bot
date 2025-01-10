@@ -124,7 +124,7 @@ async def update_user(user: User, change: dict) -> User | Exception:
         if response.status == 200:
             print(f"###UPDATED USER###\nCHANGED: {change}\nUPDATED: {text}\n#########")
             u = json.loads(text)
-            return User(id=u["id"], userID=u["userID"], userTG=u["userTG"], keyID=u["keyID"], key=u["key"], keyLimit=u["keyLimit"], PaymentSum=u["PaymentSum"])
+            return User(id=u["uuid"], userID=u["userID"], userTG=u["userTG"], keyID=u["keyID"], key=u["key"], keyLimit=u["keyLimit"], PaymentSum=u["PaymentSum"])
         else:
             return Exception(f"Update request ERROR!\n{text}")
 
@@ -132,7 +132,7 @@ async def update_user(user: User, change: dict) -> User | Exception:
 async def delete_user(user: dict):
     async with aiohttp.ClientSession() as session:
         response = await session.delete(
-            f"https://api.baserow.io/api/database/rows/table/375433/{user['id']}/",
+            f"https://api.baserow.io/api/database/rows/table/375433/{user['uuid']}/",
             headers={
                 f"Authorization": f"Token {DB_TOKEN}"
             }
@@ -145,7 +145,7 @@ async def delete_user(user: dict):
             return Exception(f"Delete request ERROR!\n{text}")
 
 
-# user = {"id": 15, "userID": 0, "userTG": "TestTG", "keyID": 30, "key": "ss://LOLtest", "keyLimit": 0.0, "PaymentSum": 100}
+# user = {"uuid": 15, "userID": 0, "userTG": "TestTG", "keyID": 30, "key": "ss://LOLtest", "keyLimit": 0.0, "PaymentSum": 100}
 
 # GET: get_user_by(ID: str, KEY: str, TG: str) ID or TG or KEY
 
@@ -157,9 +157,11 @@ async def delete_user(user: dict):
 
 
 async def main():
-    user = User(id=16, userID=1234567, userTG='TestTG', keyID=30, key='ss://LOLtest', keyLimit=0, PaymentSum=100)
-    res = await get_user_by(ID="5475897905")  # "PaymentDate":"2024-12-01","serverName":"Micro"
+    #user = User(id=16, userID=1234567, userTG='TestTG', keyID=30, key='ss://LOLtest', keyLimit=0, PaymentSum=100)
+    res = await get_user_by(ID="902448626")  # "PaymentDate":"2024-12-01","serverName":"Micro"
     print(res)
+    js = json.loads(res)
+    print(js["results"][0]["uuid"])
 
 
 asyncio.run(main())
