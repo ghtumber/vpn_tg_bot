@@ -1,21 +1,29 @@
 import json
-from os import getenv
 import aiohttp
 from backend.models import User, OutlineClient, XClient
 from datetime import date
-from globals import DB_TOKEN, XSERVERS
+from globals import DB_TOKEN, XSERVERS, DEBUG, TEST_DB_TOKEN, TABLE_ID, TEST_TABLE_ID, DB_SERVER_TYPES, DB_PROTOCOL_TYPES, DB_TEST_SERVER_TYPES, DB_TEST_PROTOCOL_TYPES
 
 
 class UsersDatabase:
-    DB_TOKEN = DB_TOKEN
-    SERVER_TYPES = {"None": 2412169, "Outline": 2354398, "XSERVER": 2354397}
-    PROTOCOL_TYPES = {"ShadowSocks": 2365214, "VLESS": 2365215, "None": 2412170}
+    if DEBUG:
+        DB_TOKEN = TEST_DB_TOKEN
+        TABLE_ID = TEST_TABLE_ID
+        SERVER_TYPES = DB_TEST_SERVER_TYPES
+        PROTOCOL_TYPES = DB_TEST_PROTOCOL_TYPES
+        print(f"[WARNING] Using TEST DB data!!!")
+    else:
+        SERVER_TYPES = DB_SERVER_TYPES
+        PROTOCOL_TYPES = DB_PROTOCOL_TYPES
+        DB_TOKEN = DB_TOKEN
+        TABLE_ID = TABLE_ID
+
     @classmethod
     async def get_all_users(cls, size=100, page=1) -> None | list[User]:
         """Don't use if you can!!!"""
         async with aiohttp.ClientSession() as session:
             response = await session.get(
-                f"https://api.baserow.io/api/database/rows/table/375433/?user_field_names=true&size={size}&page={page}",
+                f"https://api.baserow.io/api/database/rows/table/{cls.TABLE_ID}/?user_field_names=true&size={size}&page={page}",
                 headers={
                     "Authorization": f"Token {cls.DB_TOKEN}"
                 }
@@ -74,7 +82,7 @@ class UsersDatabase:
             return None
         async with aiohttp.ClientSession() as session:
             response = await session.get(
-                f"https://api.baserow.io/api/database/rows/table/375433/?user_field_names=true&filters={json.dumps(filters)}",
+                f"https://api.baserow.io/api/database/rows/table/{cls.TABLE_ID}/?user_field_names=true&filters={json.dumps(filters)}",
                 headers={
                     "Authorization": f"Token {cls.DB_TOKEN}"
                 }
@@ -119,7 +127,7 @@ class UsersDatabase:
     async def create_user(cls, user: User) -> User | Exception:
         async with aiohttp.ClientSession() as session:
             response = await session.post(
-                "https://api.baserow.io/api/database/rows/table/375433/?user_field_names=true",
+                f"https://api.baserow.io/api/database/rows/table/{cls.TABLE_ID}/?user_field_names=true",
                 headers={
                     "Authorization": f"Token {cls.DB_TOKEN}",
                     "Content-Type": "application/json"
@@ -134,8 +142,8 @@ class UsersDatabase:
                     "PaymentDate": None,
                     "LastPaymentDate": None,
                     "serverName": str(user.serverName),
-                    "Protocol": 2412170,
-                    "serverType": 2412169,
+                    "Protocol": str(user.Protocol),
+                    "serverType": str(user.serverType),
                     "uuid": user.uuid,
                     "moneyBalance": 0
                 }
@@ -183,7 +191,7 @@ class UsersDatabase:
             LastPaymentDate = str(user.lastPaymentDate.strftime("%Y-%m-%d"))
         async with aiohttp.ClientSession() as session:
             response = await session.patch(
-                f"https://api.baserow.io/api/database/rows/table/375433/{user.id}/?user_field_names=true",
+                f"https://api.baserow.io/api/database/rows/table/{cls.TABLE_ID}/{user.id}/?user_field_names=true",
                 headers={
                     f"Authorization": f"Token {cls.DB_TOKEN}",
                     "Content-Type": "application/json"
@@ -221,13 +229,13 @@ class UsersDatabase:
                             PaymentDate=PaymentDate, serverName=u["serverName"], uuid=user.uuid,
                             lastPaymentDate=lastPaymentDate, serverType=user.serverType, Protocol=u["Protocol"])
             else:
-                return Exception(f"!!! Update request ERROR!\n{text}")
+                raise Exception(f"!!! Update request ERROR!\n{text}")
 
     @classmethod
     async def delete_user(cls, user: User) -> User | Exception:
         async with aiohttp.ClientSession() as session:
             response = await session.delete(
-                f"https://api.baserow.io/api/database/rows/table/375433/{user.id}/",
+                f"https://api.baserow.io/api/database/rows/table/{cls.TABLE_ID}/{user.id}/",
                 headers={
                     f"Authorization": f"Token {cls.DB_TOKEN}"
                 }
