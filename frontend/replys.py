@@ -64,3 +64,24 @@ GLOBAL_ALERT = lambda user, alert: f"""
 <b>{user.userTG} внимание!</b>
 ‼ {alert}
 """
+
+AWAIT_DONAT_FETCH = lambda user: f"""
+<b>{user}</b> сервис под нагрузкой.
+🕓 Попробуйте нажать кнопку чуть позже
+"""
+
+NEW_DONATION_ADMIN_REPLY = lambda name, comment, sum, user, success, error: f"""
+💸 Новая оплата!
+🚹 Name: {name}
+🧾 Comment: {comment}
+💰 Манесы: {sum}руб
+{f'⛔ Error: {error}' if error else ''}
+{f'''User DB:
+🔗TG: {user.userTG}
+🌐 Svr name: {user.serverName}
+💰New balance: {user.moneyBalance}''' if success else '⛔ User не найден'}"""
+
+
+BALANCE_TOPUP_USER_REPLY = lambda user, sum: f"""
+✅ <b>Пополнение баланса</b> на сумму {sum} руб!
+💵 <b>Баланс</b>: {user.moneyBalance} руб."""

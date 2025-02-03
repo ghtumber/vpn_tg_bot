@@ -11,6 +11,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKe
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from outline_vpn.outline_vpn import OutlineKey
 
+from backend.DonatPAY.donations import DonatPAYHandler
 from backend.database.users import UsersDatabase
 from backend.models import User, XClient
 from frontend.replys import *
@@ -89,6 +90,12 @@ async def handle_cancel(message: Message):
     await message.answer("Отмена?", reply_markup=kb)
 
 
+@router.callback_query((F.data == "admin_test_donatPAY") & (F.message.from_user.id in ADMINS))
+async def handle_test_donatPAY(callback: CallbackQuery):
+    await callback.answer("")
+    await DonatPAYHandler.get_notifications(message=callback.message)
+
+
 #-----------------------------------------------UserDB-------------------------------------------
 @router.callback_query((F.data == "admin_get_user_info") & (F.message.from_user.id in ADMINS))
 async def handle_get_user_info(callback: CallbackQuery, state: FSMContext):
@@ -102,7 +109,7 @@ async def handle_get_user_info(callback: CallbackQuery, state: FSMContext):
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="-1 стр", callback_data=f"users_pagination_minus_{page}"), InlineKeyboardButton(text="+1 стр", callback_data=f"users_pagination_plus_{page}")],
-            [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_of_cancel")]
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="menu")]
         ]
     )
 
@@ -157,6 +164,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
 
 @router.callback_query((F.data == "admin_change_user_balance") & (F.message.from_user.id in ADMINS))
 async def handle_admin_change_user_balance(callback: CallbackQuery, state: FSMContext):
+    await callback.answer("")
     prev_text = callback.message.text
     userID = prev_text.split("|api|")[1]
     user = await UsersDatabase.get_user_by(ID=userID)
@@ -387,7 +395,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
     await state.update_data(UUID=message.text.strip())
     data = await state.get_data()
     await state.clear()
-    xclient: XClient= await data["server"].get_client_info(uuid=data["UUID"])
+    xclient: XClient= await data["server"].get_client_info(identifier=data["UUID"])
     client_traffics = await data["server"].get_client_traffics(uuid=data["UUID"])
     inbound = None
     for inb in data["server"].inbounds:

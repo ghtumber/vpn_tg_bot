@@ -99,10 +99,14 @@ class User:
             case "lastPaymentDate":
                 self.lastPaymentDate = new_value
                 return
+            case "moneyBalance":
+                print(f"[WARNING] {self.userTG} moneyBalance changed from {self.moneyBalance} to {new_value}")
+                self.moneyBalance = new_value
+                return
             case "Protocol":
                 self.Protocol = new_value
                 return
-            case "serverType":
+            case "configuration_type":
                 self.serverType = new_value
                 return
             case "PaymentSum":

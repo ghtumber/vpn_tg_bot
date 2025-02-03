@@ -29,7 +29,7 @@ async def check_period():
         print(f"check_period() execution in DEBUG mode")
         dat = date(day=1, month=1, year=2025)
         xclient = XClient(uuid="9d439b90-8e77-4e49-b845-f1afe8dd67a7", email="OK_now", enable=True, expiryTime=1734256800744, reset=0, tgId=5475897905, totalGB=644245094400)
-        all_users = [User(id=1, userID=5475897905, userTG="@M1rtex", PaymentSum=200, PaymentDate=dat, serverName="XServer@94.159.100.60", xclient=xclient, serverType="XSERVER", Protocol="VLESS", lastPaymentDate=dat)]
+        all_users = [User(id=1, userID=5475897905, userTG="@M1rtex", PaymentSum=200, PaymentDate=dat, serverName="XServer@94.159.100.60", xclient=xclient, serverType="XSERVER", Protocol="VLESS", lastPaymentDate=dat, moneyBalance=0)]
     now = datetime.datetime.now()
     for user in all_users:
         for svr in XSERVERS:
