@@ -36,7 +36,7 @@ class OutlineManager:
         return self.client.add_data_limit(key_id, data_limit_bytes)
 
 
-OutlineManager_2 = OutlineManager(api_url=OUTLINE_API_URL_2, cert_sha256=OUTLINE_CERT_SHA256_2, name="Start", location="🇩🇪Germany")
+#OutlineManager_2 = OutlineManager(api_url=OUTLINE_API_URL_2, cert_sha256=OUTLINE_CERT_SHA256_2, name="Start", location="🇩🇪Germany")
 
-SERVERS = [OutlineManager_2]
+SERVERS = []
 

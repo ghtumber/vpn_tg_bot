@@ -75,7 +75,7 @@ async def admin_menu(message: Message):
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="Управление XServers", callback_data="admin_manage_xservers"),
-             InlineKeyboardButton(text="Управление Outline", callback_data="admin_manage_outlines")],
+             InlineKeyboardButton(text="Payment manager", callback_data="admin_manage_payment_defaults")],
             [InlineKeyboardButton(text="Оповещения", callback_data="admin_notifications_menu")],
             [InlineKeyboardButton(text="Просмотр UsersDB", callback_data="admin_get_user_info")],
         ]
