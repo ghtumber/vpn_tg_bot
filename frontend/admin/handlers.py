@@ -1,7 +1,6 @@
 from datetime import date, datetime, timedelta
 import re
 from enum import Enum
-from idlelib.window import add_windows_to_menu
 
 from aiogram import Router, F
 from aiogram.filters.callback_data import CallbackData
