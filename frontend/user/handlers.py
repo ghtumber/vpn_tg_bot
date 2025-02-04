@@ -166,32 +166,31 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
     user.lastPaymentDate = date.today()
     user.PaymentSum = BASIC_VPN_COST
     user.serverName = data["server"].name
-    if data["configuration_type"]:
-        for inb in data["server"].inbounds:
-            if inb.protocol == data["keyType"].lower():
-                expiryTime = (datetime(dat.year, dat.month, dat.day) - epoch).total_seconds() * 1000
-                client = await inb.add_client(email=message.from_user.username, tgId=message.from_user.id, totalBytes=500*1024**3, expiryTime=expiryTime)
-                user.xclient = client
-                user.Protocol = data["keyType"]
-                user.serverType = "XSERVER"
-                user.uuid = client.uuid
-                key = client.key
-    elif data["configuration_type"] == "Outline":
-        server: OutlineManager = data["server"]
-        key = server.create_new_key(name=f"@{message.from_user.username}", data_limit_gb=500)
-        if not key.key_id:
-            key.key_id = "9999"
-        user.outline_client = OutlineClient(key=key.access_url, keyID=int(key.key_id), keyLimit=key.data_limit)
-        user.Protocol = "ShadowSocks"
-        user.serverType = "Outline"
-        key = key.access_url.split("#")[0] + "#PROXYM1TY"
+    for inb in data["server"].inbounds:
+        if inb.protocol == data["keyType"].lower():
+            expiryTime = (datetime(dat.year, dat.month, dat.day) - epoch).total_seconds() * 1000
+            client = await inb.add_client(email=message.from_user.username, tgId=message.from_user.id, totalBytes=500*1024**3, expiryTime=expiryTime)
+            user.xclient = client
+            user.Protocol = data["keyType"]
+            user.serverType = "XSERVER"
+            user.uuid = client.uuid
+            key = client.key
+    # elif data["configuration_type"] == "Outline":
+    #     server: OutlineManager = data["server"]
+    #     key = server.create_new_key(name=f"@{message.from_user.username}", data_limit_gb=500)
+    #     if not key.key_id:
+    #         key.key_id = "9999"
+    #     user.outline_client = OutlineClient(key=key.access_url, keyID=int(key.key_id), keyLimit=key.data_limit)
+    #     user.Protocol = "ShadowSocks"
+    #     user.serverType = "Outline"
+    #     key = key.access_url.split("#")[0] + "#PROXYM1TY"
     user: User = await UsersDatabase.update_user(user=user, change={})
     totalGB = user.xclient.totalGB / 1024**3 if user.xclient else user.outline_client.keyLimit / 1000**3
     answer = f"""✅ Готово! Ваши данные для подключения:
 🌐 <b>Сервер</b>: {data["server"].name}
 🏳 <b>Локация</b>: {data["server"].location}
 📡 <b>Протокол подключения</b>: {data["keyType"]}
-⏹ <b>Ограничение</b>: {totalGB}GBd
+⏹ <b>Ограничение</b>: {totalGB}GB
 🔑 <b>Ключ</b>: <pre><code>{user.xclient.key}</code></pre>
     """
     await state.clear()

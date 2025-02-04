@@ -135,6 +135,7 @@ class XServer:
                 if not js["success"]:
                     raise Exception(f"[{resp.status}]Get inbound data exception! {js['msg']}")
                 if len(obj) > 0:
+                    self.inbounds = []
                     for inb in obj:
                         inb_id = inb["id"]
                         predata = dict()
