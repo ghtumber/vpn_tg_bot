@@ -67,6 +67,9 @@ MENU_KEYBOARD_MARKUP = ReplyKeyboardMarkup(
             [
                 KeyboardButton(text="👤Menu"),
             ],
+            [
+                KeyboardButton(text="🚨Тех. поддержка"),
+            ],
         ],
         resize_keyboard=True
     )

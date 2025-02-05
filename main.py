@@ -64,6 +64,11 @@ async def to_menu(callback: CallbackQuery, state: FSMContext):
         await menu(callback.message, callback=callback)
     await callback.message.delete()
 
+@dp.message(F.text.contains("Тех. поддержка"))
+async def TA(message: Message, *args, **kwargs):
+    user: User = await UsersDatabase.get_user_by(ID=str(message.from_user.id))
+    await message.answer(text=TECH_ASSISTANCE_RESPONSE(user=user), reply_markup=MENU_KEYBOARD_MARKUP)
+
 
 @dp.callback_query(F.data == "cancel_of_cancel")
 async def cancel_of_cancel(callback: CallbackQuery):
@@ -97,8 +102,7 @@ async def menu(message: Message, *args, **kwargs):
         if user:
             if user.xclient:
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="📊 Использование VPN", callback_data="xclient_vpn_usage")],
-                    [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="view_user_key")],
+                    [InlineKeyboardButton(text="📊 Использование", callback_data="xclient_vpn_usage"), InlineKeyboardButton(text="🔑 Ключ", callback_data="view_user_key")],
                     [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
                     [InlineKeyboardButton(text="📘 Инструкции", callback_data=f"get_{user.Protocol}_instructions")]
                 ])
@@ -142,7 +146,6 @@ def between_callback():
 
 async def main():
     period_checker_scheduler.start()
-    #asyncio.get_event_loop().create_task(listen_to_centrifugo(), name="Centrifugo listener")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

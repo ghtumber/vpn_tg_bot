@@ -106,6 +106,39 @@ async def listen_to_centrifugo():
                                         print(f"[INFO] TRYING TO SEND DONATION MESSAGE TO ADMIN {adm}")
                                         await send_bot_message(chat_id=adm, text=NEW_DONATION_ADMIN_REPLY(name, comment, sum, user, success, error))
 
+            except websockets.ConnectionClosed as e:
+                if e.rcvd.code == 3005:
+                    """
+                    Ошибка при обработке сообщения: received 3005 (registered) {"reason":"expired","reconnect":true}
+                    """
+                    print("[3005 ERROR] receiving new tokens")
+                    client_token = get_token()
+                    auth_data = {
+                        "id": 1,
+                        "params": {
+                            "name": "python",
+                            "token": client_token
+                        }
+                    }
+                    await websocket.send(json.dumps(auth_data))
+
+                    resp = await websocket.recv()
+                    client = json.loads(resp)["result"]["client"]
+                    print(f"{client=}")
+                    sub_token = get_sub_token(client=client, channel=channel)
+
+                    subscribe_data = {
+                        "id": 2,
+                        "method": 1,
+                        "params": {
+                            "channel": channel,
+                            "token": sub_token
+                        }
+                    }
+                    await websocket.send(json.dumps(subscribe_data))
+                else:
+                    print(f"Ошибка при обработке donatPAY: {e}")
+                break
             except Exception as e:
-                print(f"Ошибка при обработке сообщения: {e}")
+                print(f"[donatPAY ERROR] {e}")
                 break

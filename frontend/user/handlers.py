@@ -1,3 +1,4 @@
+import asyncio
 import re
 from datetime import date, datetime
 from typing import Protocol
@@ -199,11 +200,14 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "user_registration")
 async def handle_registration(callback: CallbackQuery):
+    await asyncio.sleep(2)
+    u = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
     await callback.answer(text='')
-    user = User(userID=callback.from_user.id, userTG=f"@{callback.from_user.username}", PaymentSum=0, PaymentDate=None,
-                serverName="", serverType="None", moneyBalance=0, Protocol="None", lastPaymentDate=None)
-    u = await UsersDatabase.create_user(user)
-    await callback.message.answer(f"✅ Аккаунт создан!\n\n🔓 Доступ к меню открыт!", reply_markup=MENU_KEYBOARD_MARKUP)
+    if not u:
+        user = User(userID=callback.from_user.id, userTG=f"@{callback.from_user.username}", PaymentSum=0, PaymentDate=None,
+                    serverName="", serverType="None", moneyBalance=0, Protocol="None", lastPaymentDate=None)
+        u = await UsersDatabase.create_user(user)
+        await callback.message.answer(f"✅ Аккаунт создан!\n\n🔓 Доступ к меню открыт!", reply_markup=MENU_KEYBOARD_MARKUP)
 
 
 @router.callback_query(F.data == "xclient_vpn_usage")
