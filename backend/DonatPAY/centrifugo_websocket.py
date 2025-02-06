@@ -138,7 +138,7 @@ async def listen_to_centrifugo():
                     await websocket.send(json.dumps(subscribe_data))
                 else:
                     print(f"Ошибка при обработке donatPAY: {e}")
-                break
+                continue
             except Exception as e:
                 print(f"[donatPAY ERROR] {e}")
                 break
