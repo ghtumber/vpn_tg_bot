@@ -170,6 +170,7 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
     for inb in data["server"].inbounds:
         if inb.protocol == data["keyType"].lower():
             expiryTime = (datetime(dat.year, dat.month, dat.day) - epoch).total_seconds() * 1000
+            expiryTime = (datetime(dat.year, dat.month, dat.day) - epoch).total_seconds() * 1000
             client = await inb.add_client(email=message.from_user.username, tgId=message.from_user.id, totalBytes=500*1024**3, expiryTime=expiryTime)
             user.xclient = client
             user.Protocol = data["keyType"]
@@ -204,10 +205,13 @@ async def handle_registration(callback: CallbackQuery):
     u = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
     await callback.answer(text='')
     if not u:
-        user = User(userID=callback.from_user.id, userTG=f"@{callback.from_user.username}", PaymentSum=0, PaymentDate=None,
-                    serverName="", serverType="None", moneyBalance=0, Protocol="None", lastPaymentDate=None)
-        u = await UsersDatabase.create_user(user)
-        await callback.message.answer(f"✅ Аккаунт создан!\n\n🔓 Доступ к меню открыт!", reply_markup=MENU_KEYBOARD_MARKUP)
+        if callback.from_user.username:
+            user = User(userID=callback.from_user.id, userTG=f"@{callback.from_user.username}", PaymentSum=0, PaymentDate=None,
+                        serverName="", serverType="None", moneyBalance=0, Protocol="None", lastPaymentDate=None)
+            u = await UsersDatabase.create_user(user)
+            await callback.message.answer(f"✅ Аккаунт создан!\n\n🔓 Доступ к меню открыт!", reply_markup=MENU_KEYBOARD_MARKUP)
+        else:
+            await callback.message.answer(f"✏ Для корректной работы бота нужен <b>username</b> в телеграмм!")
 
 
 @router.callback_query(F.data == "xclient_vpn_usage")

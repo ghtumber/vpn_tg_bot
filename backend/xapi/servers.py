@@ -61,13 +61,13 @@ class XServer:
 
     async def get_online_users(self) -> list:
         await self.get_session()
-        """Returns list off all online users"""
+        """Returns list off all online users (list of emails)"""
         async with aiohttp.ClientSession() as s:
             resp = await s.post(url=f"https://{self.ip}:{self.port}/{self.path}/panel/api/inbounds/onlines", ssl=ssl_context, cookies=self.login_cookies)
         if resp.status == 200:
-            print(await resp.text())
+            # print(await resp.text())
             js = await resp.json()
-            return js["obj"]
+            return js["obj"] if js["obj"] else []
         raise Exception("Get data exception! Check: URI, COOKIES")
 
     async def get_client_traffics(self, email: str = None, uuid: str = None) -> dict:

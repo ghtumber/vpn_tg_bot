@@ -79,6 +79,7 @@ class UserBalanceUpdating(StatesGroup):
     new_value = State()
     confirmation = State()
 
+
 @router.message(F.text == "❌ Отмена")
 async def handle_cancel(message: Message):
     kb = InlineKeyboardMarkup(
@@ -419,7 +420,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
 🛰 <b>Сервер</b>: {data["server"].name}
 ⏹ <b>Трафик</b>: {round((client_traffics["up"] + client_traffics["down"]) / 1024**3, 2)}/{xclient.totalGB / 1024**3}GB
 🕓 <b>Истекает</b>: {exprDate}
-🔑 <b>Ключ</b>: <pre><code>{xclient.key}</code></pre>
+🔑 <b>Ключ</b>: <pre><code>{await xclient.get_key(XSERVERS)}</code></pre>
 <span class="tg-spoiler">|api|{data["server"].name}:{inbound.id}:{xclient.uuid}|api|</span>
 """
     if xclient.enable:

@@ -85,7 +85,13 @@ async def admin_menu(message: Message):
             [InlineKeyboardButton(text="Просмотр UsersDB", callback_data="admin_get_user_info")],
         ]
     )
-    await message.answer(f"Привет!\n‼ Сейчас идёт регистрация!\n\n😌 Не забывайте прогревать ГОЕВ❗❗❗", reply_markup=MENU_KEYBOARD_MARKUP)
+
+    online_users_count = 0
+    for server in XSERVERS:
+        online_users = await server.get_online_users()
+        online_users_count += len(online_users)
+
+    await message.answer(ADMIN_GREETING_REPLY(username=message.from_user.username, online_users_count=online_users_count, next_ws_update=NEXT_WS_UPDATE), reply_markup=MENU_KEYBOARD_MARKUP)
     await message.answer("⚡ Вот что можно сделать сейчас.", reply_markup=keyboard)
 
 
@@ -133,15 +139,18 @@ async def menu(message: Message, *args, **kwargs):
 async def with_puree(message: Message):
     await message.reply("Вы гой")
 
-
 @dp.message(F.text == "Admin")
 async def without_puree(message: Message):
     await message.reply("Прогревайте гоев")
 
-def between_callback():
+def update_global_next_ws_update(new):
+    global NEXT_WS_UPDATE
+    NEXT_WS_UPDATE = new
+
+def between_callback(callback_func):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(listen_to_centrifugo())
+    loop.run_until_complete(listen_to_centrifugo(callback_func))
     loop.close()
 
 async def main():
@@ -153,12 +162,12 @@ if __name__ == "__main__":
     dp.include_router(user_router)
     dp.include_router(admin_router)
     dp.include_router(notifications_router)
-    t = Thread(target=between_callback, args=[], name="Centrifugo listener")
+    t = Thread(target=between_callback, args=[update_global_next_ws_update], name="Centrifugo listener")
     try:
         t.start()
         asyncio.run(main())
     except KeyboardInterrupt:
-        SHUTDOWN[0] = True
+        SHUTDOWN = True
         print("Shutting down...")
         t.join()
         # sys.exit()

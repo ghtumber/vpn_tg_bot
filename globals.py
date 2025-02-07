@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 from sys import exit
 from calendar import monthrange
 from datetime import date
@@ -58,7 +59,8 @@ DB_TEST_PROTOCOL_TYPES = {"ShadowSocks": 2447417, "VLESS": 2447418, "None": 2447
 
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
-SHUTDOWN = [False]
+NEXT_WS_UPDATE = datetime.datetime.now()
+SHUTDOWN = False
 
 PREFERRED_PAYMENT_SETTINGS = {"server_name": "XServer@94.159.100.60", "keyType": "VLESS"}
 
