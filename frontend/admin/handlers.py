@@ -14,16 +14,18 @@ from backend.DonatPAY.donations import DonatPAYHandler
 from backend.database.users import UsersDatabase
 from backend.models import User, XClient
 from frontend.replys import *
+from frontend.admin.payment_manager_handlers import router as payment_manager_router
 from globals import ADMINS, MENU_KEYBOARD_MARKUP, XSERVERS
 from backend.outline.managers import SERVERS
 
 router = Router()
+router.include_router(payment_manager_router)
 
 CANCEL_KB = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text="❌ Отмена")]
 ], resize_keyboard=True)
 
-# ----------------CallbackData----------------
+# ----------------CallbackData---------------- not used for now ~~~
 class ClientAction(str, Enum):
     disable = "💡Выключить"
     delete = "⛔Удалить"

@@ -33,7 +33,6 @@ def get_sub_token(client, channel):
 
 
 async def handle_donat_pay_message(websocket):
-    await asyncio.sleep(2)
     message = await websocket.recv()
     print(f"Получено сообщение от DonatPAY: {message=}")
     message_dict = json.loads(message)
@@ -65,16 +64,17 @@ async def handle_donat_pay_message(websocket):
                         for adm in ADMINS:
                             print(f"[INFO] TRYING TO SEND DONATION MESSAGE TO ADMIN {adm}")
                             await send_bot_message(chat_id=adm, text=NEW_DONATION_ADMIN_REPLY(name, comment, sum, user, success, error))
+    await asyncio.sleep(2)
 
 
 async def listen_to_centrifugo(update_global_next_ws_update):
     print("[INFO] Initializing Centrifugo")
     uri = "wss://centrifugo.donatepay.ru:43002/connection/websocket"
-    client_token = get_token()
     channel = "$public:1304427"
 
     while not SHUTDOWN:
         async with websockets.connect(uri) as websocket:
+            client_token = get_token()
             auth_data = {
                 "id": 1,
                 "params": {

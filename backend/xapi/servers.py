@@ -309,7 +309,8 @@ class Inbound:
 
 
 async def GET_XSERVERS() -> list[XServer]:
-    XSERVERS = [XServer(ip="94.159.100.60", port=59999, path="PROXY")]
+    XSERVERS = [XServer(ip="94.159.100.60", port=59999, path="PROXY"),
+                XServer(ip="178.236.243.245", port=59999, path="PROXY")]
     for server in XSERVERS:
         await server.get_inbounds()
         print(f"[LOG] XServer {server.name} connected successfully")

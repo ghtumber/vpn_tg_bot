@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import sys
+from datetime import datetime
+import time
 from aiogram import Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
@@ -91,7 +93,7 @@ async def admin_menu(message: Message):
         online_users = await server.get_online_users()
         online_users_count += len(online_users)
 
-    await message.answer(ADMIN_GREETING_REPLY(username=message.from_user.username, online_users_count=online_users_count, next_ws_update=NEXT_WS_UPDATE), reply_markup=MENU_KEYBOARD_MARKUP)
+    await message.answer(ADMIN_GREETING_REPLY(username=message.from_user.username, online_users_count=online_users_count, next_ws_update=NEXT_WS_UPDATE, servers_count=len(XSERVERS)), reply_markup=MENU_KEYBOARD_MARKUP)
     await message.answer("⚡ Вот что можно сделать сейчас.", reply_markup=keyboard)
 
 
@@ -143,9 +145,14 @@ async def with_puree(message: Message):
 async def without_puree(message: Message):
     await message.reply("Прогревайте гоев")
 
+def get_utc_time(time_to_convert: datetime) -> datetime:
+    tz = time.timezone
+    return time_to_convert + datetime.timedelta(seconds=tz)
+
 def update_global_next_ws_update(new):
     global NEXT_WS_UPDATE
-    NEXT_WS_UPDATE = new
+    NEXT_WS_UPDATE = get_utc_time(new)
+
 
 def between_callback(callback_func):
     loop = asyncio.new_event_loop()

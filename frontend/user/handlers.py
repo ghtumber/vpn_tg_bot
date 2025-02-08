@@ -15,7 +15,7 @@ from backend.xapi.servers import XServer
 from frontend.replys import *
 from backend.outline.managers import SERVERS, OutlineManager
 from backend.database.users import UsersDatabase
-from globals import add_months, XSERVERS, MENU_KEYBOARD_MARKUP, BASIC_VPN_COST, DB_SERVER_TYPES, DEBUG, PREFERRED_PAYMENT_SETTINGS
+from globals import add_months, XSERVERS, MENU_KEYBOARD_MARKUP, use_BASIC_VPN_COST, DEBUG, use_PREFERRED_PAYMENT_SETTINGS
 
 router = Router()
 
@@ -77,13 +77,13 @@ async def handle_key_payment_server_type(message: Message, state: FSMContext):
     if configuration_type == "Auto":
         svr = None
         for server in XSERVERS:
-            if server.name == PREFERRED_PAYMENT_SETTINGS["server_name"]:
+            if server.name == use_PREFERRED_PAYMENT_SETTINGS()["server_name"]:
                 svr = server
                 break
         if not svr:
             await message.answer(text="😓 Ошибка сервера. Не найден сервер.\n🙏 Если вы видите это сообщение, пожалуйста, напишите в поддержку.")
             return 0
-        await state.update_data(server=svr, keyType=PREFERRED_PAYMENT_SETTINGS["keyType"], auto=True)
+        await state.update_data(server=svr, keyType=use_PREFERRED_PAYMENT_SETTINGS()["keyType"], auto=True)
         await state.set_state(KeyPayment.keyType)
         await handle_key_payment_key_type(message=message, state=state)
     elif configuration_type == "Manual":
@@ -138,7 +138,7 @@ async def handle_key_payment_key_type(message: Message, state: FSMContext):
 🌐 <b>Сервер</b> {data["server"].name}
 🏳 <b>Локация</b>: {data["server"].location}
 📡 <b>Протокол подключения</b>: {protocol} 
-💸 <b>Стоимость</b>: {BASIC_VPN_COST}р
+💸 <b>Стоимость</b>: {use_BASIC_VPN_COST()}р
 🧾 Для продолжения <b>подтвердите</b> оплату
 """
     await state.set_state(KeyPayment.confirmation)
@@ -154,18 +154,18 @@ async def handle_key_payment_key_type(message: Message, state: FSMContext):
 @router.message(KeyPayment.confirmation)
 async def handle_key_payment_confirmation(message: Message, state: FSMContext):
     user: User = await UsersDatabase.get_user_by(ID=str(message.from_user.id))
-    if user.moneyBalance < BASIC_VPN_COST:
+    if user.moneyBalance < use_BASIC_VPN_COST():
         await message.answer(text="❌ Недостаточно <b>средств</b> на балансе.\n\n‼ <b>Пополните</b> баланс.", reply_markup=MENU_KEYBOARD_MARKUP)
         await state.clear()
         await message.delete()
         return 0
     data = await state.get_data()
     epoch = datetime.utcfromtimestamp(0)
-    user.moneyBalance -= BASIC_VPN_COST
+    user.moneyBalance -= use_BASIC_VPN_COST()
     dat = add_months(date.today(), 1)
     user.PaymentDate = dat
     user.lastPaymentDate = date.today()
-    user.PaymentSum = BASIC_VPN_COST
+    user.PaymentSum = use_BASIC_VPN_COST()
     user.serverName = data["server"].name
     for inb in data["server"].inbounds:
         if inb.protocol == data["keyType"].lower():

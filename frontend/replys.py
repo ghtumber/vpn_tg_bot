@@ -16,7 +16,7 @@ REGISTRATION_FSM_REPLY = """
 Чтобы активировать ваш аккаунт, отправьте ваш ключ от VPN в ответ на это сообщение.
 """
 
-ADMIN_GREETING_REPLY = lambda username, online_users_count, next_ws_update:f"""
+ADMIN_GREETING_REPLY = lambda username, online_users_count, next_ws_update, servers_count:f"""
 ✨ <b>Привет</b> {username}
 
 📋 Это <b>админка Proxym1ty</b>
@@ -24,7 +24,18 @@ ADMIN_GREETING_REPLY = lambda username, online_users_count, next_ws_update:f"""
 Здесь ты можешь управлять клиентами и настройками продаж
 
 📊 <b>Онлайн сейчас</b>: {online_users_count}
-🔮 <b>Websocket next update</b>: {next_ws_update.strftime("%d.%m.%Y %H:%M:%S")}
+🌐 <b>Подключено серверов</b>: {servers_count}
+🔮 <b>Websocket next update</b>: {next_ws_update.strftime("%d.%m.%Y %H:%M:%S")} (UTC +0)
+"""
+
+ADMIN_PAYMENTS_MANAGER_REPLY = lambda default_server, default_protocol, default_coast:f"""
+🧾 Сейчас установлены следующие значения.
+
+Здесь ты можешь <b>управлять</b> ими.
+
+🌐 <b>Сервер сейчас</b>: {default_server}
+⛓ <b>Протокол сейчас</b>: {default_protocol}
+🏧 <b>Цена сейчас</b>: {default_coast}
 """
 
 USER_GREETING_REPLY = lambda username, paymentSum, paymentDate, serverName, serverLocation, user_balance: f"""

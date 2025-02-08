@@ -1,5 +1,7 @@
 import asyncio
 import datetime
+import json
+import time
 from sys import exit
 from calendar import monthrange
 from datetime import date
@@ -33,10 +35,11 @@ def add_months(sourcedate, months):
     day = min(sourcedate.day, monthrange(year, month)[1])
     return date(year, month, day)
 
+print(f"[TIMEZONE] {time.tzname} UTC{'+' if time.timezone < 0 else '-'}{-time.timezone // 3600}")
+
 TOKEN = getenv("BOT_TOKEN") if not DEBUG else getenv("DEBUG_BOT_TOKEN")
 ADMINS = [902448626, 1124386913] # 1124386913
 
-BASIC_VPN_COST = 150
 DONATPAY_API_KEY = get_donat_pay_token()
 
 OUTLINE_API_URL_1 = getenv('API_URL_1')
@@ -62,7 +65,35 @@ bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
 NEXT_WS_UPDATE = datetime.datetime.now()
 SHUTDOWN = False
 
-PREFERRED_PAYMENT_SETTINGS = {"server_name": "XServer@94.159.100.60", "keyType": "VLESS"}
+DEFAULT_PAYMENT_SETTINGS = {"server_name": "XServer@94.159.100.60", "keyType": "VLESS", "coast": 150}
+def get_preferred_payment_settings():
+    try:
+        preferred_payment_settings = json.load(fp=open("preferred_payment_settings.json", "r+"))
+    except FileNotFoundError or FileExistsError:
+        _file = open("preferred_payment_settings.json", "w+")
+        json.dump(DEFAULT_PAYMENT_SETTINGS, _file)
+        preferred_payment_settings = json.load(fp=_file)
+        _file.close()
+    return preferred_payment_settings
+
+def edit_preferred_payment_settings(new):
+    global PREFERRED_PAYMENT_SETTINGS, BASIC_VPN_COST
+    PREFERRED_PAYMENT_SETTINGS = new
+    _ = open("preferred_payment_settings.json", "w+")
+    json.dump(new, _)
+    _.close()
+    BASIC_VPN_COST = new["coast"]
+
+PREFERRED_PAYMENT_SETTINGS = get_preferred_payment_settings()
+BASIC_VPN_COST = PREFERRED_PAYMENT_SETTINGS["coast"]
+
+def use_BASIC_VPN_COST() -> int:
+    return BASIC_VPN_COST
+
+def use_PREFERRED_PAYMENT_SETTINGS() -> dict[str:str]:
+    return PREFERRED_PAYMENT_SETTINGS
+
+
 
 MENU_KEYBOARD_MARKUP = ReplyKeyboardMarkup(
         keyboard=[
