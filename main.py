@@ -109,12 +109,21 @@ async def menu(message: Message, *args, **kwargs):
         user: User = await UsersDatabase.get_user_by(ID=str(user_id))
         if user:
             if user.xclient:
-                keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="📊 Использование", callback_data="xclient_vpn_usage"), InlineKeyboardButton(text="🔑 Ключ", callback_data="view_user_key")],
-                    [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
-                    [InlineKeyboardButton(text="📘 Инструкции", callback_data=f"get_{user.Protocol}_instructions")]
-                ])
-                server = [s for s in XSERVERS if s.name == user.serverName][0]
+                if user.xclient.enable:
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(text="📊 Использование", callback_data="xclient_vpn_usage"), InlineKeyboardButton(text="🔑 Ключ", callback_data="view_user_key")],
+                        [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
+                        [InlineKeyboardButton(text="📘 Инструкции", callback_data=f"get_{user.Protocol}_instructions")]
+                    ])
+                    server = [s for s in XSERVERS if s.name == user.serverName][0]
+                else:
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
+                        [InlineKeyboardButton(text="👉 Оплатить VPN", callback_data="regain_user_access")]
+                    ])
+                    await message.answer(text=EXHAUSTED_USER_GREETING_REPLY, reply_markup=keyboard)
+                    return
+
             elif user.outline_client:
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="view_user_key")],

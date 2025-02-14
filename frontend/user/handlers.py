@@ -15,7 +15,7 @@ from backend.xapi.servers import XServer
 from frontend.replys import *
 from backend.outline.managers import SERVERS, OutlineManager
 from backend.database.users import UsersDatabase
-from globals import add_months, XSERVERS, MENU_KEYBOARD_MARKUP, use_BASIC_VPN_COST, DEBUG, use_PREFERRED_PAYMENT_SETTINGS
+from globals import add_months, XSERVERS, MENU_KEYBOARD_MARKUP, use_BASIC_VPN_COST, DEBUG, use_PREFERRED_PAYMENT_SETTINGS, bot
 
 router = Router()
 
@@ -155,13 +155,17 @@ async def handle_key_payment_key_type(message: Message, state: FSMContext):
 async def handle_key_payment_confirmation(message: Message, state: FSMContext):
     user: User = await UsersDatabase.get_user_by(ID=str(message.from_user.id))
     if user.moneyBalance < use_BASIC_VPN_COST():
-        await message.answer(text="❌ Недостаточно <b>средств</b> на балансе.\n\n‼ <b>Пополните</b> баланс.", reply_markup=MENU_KEYBOARD_MARKUP)
+        await message.answer(text="❌ Недостаточно <b>средств</b> на балансе.", reply_markup=MENU_KEYBOARD_MARKUP)
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💳 Пополнить баланс", url=DonatPAYHandler.form_link(user=user))]
+        ])
+        await message.answer(text="💰 <b>Пополните</b> баланс.", reply_markup=kb)
         await state.clear()
         await message.delete()
         return 0
     data = await state.get_data()
     epoch = datetime.utcfromtimestamp(0)
-    user.moneyBalance -= use_BASIC_VPN_COST()
+    user.change("moneyBalance", user.moneyBalance - use_BASIC_VPN_COST())
     dat = add_months(date.today(), 1)
     user.PaymentDate = dat
     user.lastPaymentDate = date.today()
@@ -169,7 +173,6 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
     user.serverName = data["server"].name
     for inb in data["server"].inbounds:
         if inb.protocol == data["keyType"].lower():
-            expiryTime = (datetime(dat.year, dat.month, dat.day) - epoch).total_seconds() * 1000
             expiryTime = (datetime(dat.year, dat.month, dat.day) - epoch).total_seconds() * 1000
             client = await inb.add_client(email=message.from_user.username, tgId=message.from_user.id, totalBytes=500*1024**3, expiryTime=expiryTime)
             user.xclient = client
@@ -197,6 +200,29 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
     """
     await state.clear()
     await message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)
+
+
+@router.callback_query(F.data == "regain_user_access")
+async def handle_regain_user_access(callback: CallbackQuery):
+    user: User = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
+    if user.moneyBalance < use_BASIC_VPN_COST():
+        await callback.message.answer(text="❌ Недостаточно <b>средств</b> на балансе.", reply_markup=MENU_KEYBOARD_MARKUP)
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💳 Пополнить баланс", url=DonatPAYHandler.form_link(user=user))]
+        ])
+        await callback.message.answer(text="💰 <b>Пополните</b> баланс.", reply_markup=kb)
+        return 0
+    data = await user.xclient.get_server_and_inbound(XSERVERS)
+    user.change("moneyBalance", user.moneyBalance - user.PaymentSum)
+    new_date = add_months(user.PaymentDate, 1)
+    epoch = datetime.utcfromtimestamp(0)
+    user.xclient.enable = True
+    await data["inbound"].update_client(user.xclient, {"expiryTime": (datetime.datetime(new_date.year, new_date.month, new_date.day) - epoch).total_seconds() * 1000, "enable": True})
+    await data["inbound"].reset_client_traffic(user.xclient.for_api())
+    user.change("PaymentDate", new_date)
+    await user.xclient.get_key(XSERVERS)
+    await UsersDatabase.update_user(user)
+    await callback.message.answer(text=PAYMENT_SUCCESS(user), reply_markup=MENU_KEYBOARD_MARKUP)
 
 
 @router.callback_query(F.data == "user_registration")

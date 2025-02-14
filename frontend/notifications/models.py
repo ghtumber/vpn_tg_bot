@@ -1,4 +1,4 @@
-from frontend.replys import GLOBAL_ALERT, PAYD_PERIOD_ENDING
+from frontend.replys import GLOBAL_ALERT, MONEY_ENDING
 from globals import bot, ADMINS, MENU_KEYBOARD_MARKUP
 from backend.models import XClient, User
 
@@ -11,7 +11,7 @@ class PeriodEndingNotification:
     async def send(self):
         try:
             for user in self.users_to:
-                text = PAYD_PERIOD_ENDING(user=user)
+                text = MONEY_ENDING(user=user)
                 await bot.send_message(chat_id=user.userID, text=text)
             receivers = "".join([f"{i.userTG}, " for i in self.users_to])
             for adm in self.callback_to:

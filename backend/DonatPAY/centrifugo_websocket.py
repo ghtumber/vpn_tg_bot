@@ -117,12 +117,12 @@ async def listen_to_centrifugo(update_global_next_ws_update):
                         break
                     await handle_donat_pay_message(websocket=websocket)
                 except websockets.ConnectionClosed as e:
-                    if e.rcvd.code == 3005:
-                        print(f"[TTL ERROR {ttl=}] TTL of Centrifuge exhausted, reloading connection")
-                        break
+                    if e.rcvd:
+                        if e.rcvd.code == 3005:
+                            print(f"[TTL ERROR {ttl=}] TTL of Centrifuge exhausted, reloading connection")
                     else:
-                        print(f"Ошибка при обработке donatPAY: {e}")
-                    continue
+                        print(f"[ConnectionClosed ERROR] {e}")
+                    break
                 except Exception as e:
                     print(f"[donatPAY ERROR] {e}")
                     break

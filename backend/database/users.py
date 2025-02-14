@@ -135,7 +135,7 @@ class UsersDatabase:
                 json={
                     "userID": user.userID,
                     "userTG": user.userTG,
-                    "keyID": None,
+                    "Enabled": user.xclient.enable if user.xclient else True,
                     "key": "",
                     "keyLimit": None,
                     "PaymentSum": int(user.PaymentSum),
@@ -166,7 +166,7 @@ class UsersDatabase:
                 raise Exception(f"Create request ERROR!\n{text}")
 
     @classmethod
-    async def update_user(cls, user: User, change: dict) -> User | Exception:
+    async def update_user(cls, user: User, change: dict = dict) -> User | Exception:
         """
         change accepts dict formed like this: {"field_to_change": new_value}
         !!! new_value need to be in accepted datatype
@@ -199,7 +199,7 @@ class UsersDatabase:
                 json={
                     "userID": user.userID,
                     "userTG": user.userTG,
-                    "keyID": user.outline_client.keyID if user.outline_client else "",
+                    "Enabled": user.xclient.enable,
                     "key": key,
                     "keyLimit": keyLimit,
                     "PaymentSum": int(user.PaymentSum),

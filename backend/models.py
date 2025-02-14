@@ -25,6 +25,7 @@ class XClient:
         return self.key
 
     async def get_server_and_inbound(self, servers: list) -> dict:
+        """Returns dict {`server`: s, `inbound`: inb}"""
         for s in servers:
             await s.get_inbounds()
             for inb in s.inbounds:
