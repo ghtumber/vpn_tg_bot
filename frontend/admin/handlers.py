@@ -103,7 +103,7 @@ async def handle_test_donatPAY(callback: CallbackQuery):
 async def handle_get_user_info(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
     page = 1
-    users = await UsersDatabase.get_all_users(page=page, size=25)
+    users, _ = await UsersDatabase.get_all_users(page=page, size=25)
     text = ""
     for user in users:
         text += f"\n🏷UserTG: {user.userTG}  🆔: <code>{user.userID}</code>"
@@ -123,7 +123,7 @@ async def handle_get_user_info(callback: CallbackQuery, state: FSMContext):
 async def users_paginate_plus(callback: CallbackQuery, state: FSMContext):
     page = int(callback.data.split("_")[3])
     page += 1
-    users = await UsersDatabase.get_all_users(page=page, size=25)
+    users, _ = await UsersDatabase.get_all_users(page=page, size=25)
     text = ""
     for user in users:
         text += f"\n🏷UserTG: {user.userTG}  🆔: <code>{user.userID}</code>"
@@ -134,7 +134,7 @@ async def users_paginate_minus(callback: CallbackQuery, state: FSMContext):
     page = int(callback.data.split("_")[3])
     if page - 1 > 0:
         page -= 1
-    users = await UsersDatabase.get_all_users(page=page, size=25)
+    users, _ = await UsersDatabase.get_all_users(page=page, size=25)
     text = ""
     for user in users:
         text += f"\n🏷UserTG: {user.userTG}  🆔: <code>{user.userID}</code>"

@@ -113,6 +113,9 @@ class User:
             case "PaymentSum":
                 self.PaymentSum = new_value
                 return
+            case "PaymentDate":
+                self.PaymentDate = new_value
+                return
             case "serverName":
                 self.serverName = new_value
                 return

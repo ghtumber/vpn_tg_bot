@@ -7,7 +7,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardBut
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 
 from frontend.replys import ADMIN_PAYMENTS_MANAGER_REPLY
-from globals import ADMINS, XSERVERS, use_BASIC_VPN_COST, use_PREFERRED_PAYMENT_SETTINGS, MENU_KEYBOARD_MARKUP, edit_preferred_payment_settings
+from globals import ADMINS, XSERVERS, use_BASIC_VPN_COST, use_PREFERRED_PAYMENT_SETTINGS, MENU_KEYBOARD_MARKUP, edit_preferred_payment_settings, DONATION_WIDGET_URL
 
 router = Router()
 
@@ -43,10 +43,12 @@ async def handle_admin_manage_payment_defaults(callback: CallbackQuery):
             [InlineKeyboardButton(text="🌐 Изменить сервер", callback_data="admin_change_payment_defaults_server")],
             [InlineKeyboardButton(text="⛓ Изменить протокол", callback_data="admin_change_payment_defaults_protocol")],
             [InlineKeyboardButton(text="🏧 Изменить цену", callback_data="admin_change_payment_defaults_coast")],
+            [InlineKeyboardButton(text="👀 Виджет с донатами", url=DONATION_WIDGET_URL)]
         ]
     )
     await callback.message.answer(ADMIN_PAYMENTS_MANAGER_REPLY(default_coast=use_BASIC_VPN_COST(), default_server=use_PREFERRED_PAYMENT_SETTINGS()["server_name"],
                                                                default_protocol=use_PREFERRED_PAYMENT_SETTINGS()["keyType"]), reply_markup=keyboard)
+
 
 
 #-------------------------------------------Server editing---------------------------------------------------------

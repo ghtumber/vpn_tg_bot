@@ -100,7 +100,7 @@ PAYMENT_SUCCESS = lambda user: f"""
 NO_MONEY_LEFT =  lambda user: f"""
 💔 <b>{user.userTG}</b>!
 ⛔ <i>VPN отключён!</i>
-💰 Баланса <b>{user.moneyBalance}руб.</b>
+💰 Баланс <b>{user.moneyBalance}руб.</b>
 📅 Оплата <b>{user.PaymentDate.strftime("%d.%m.%Y")}</b> просрочена!
 
 Чтобы возобновить доступ пополните баланс 👇

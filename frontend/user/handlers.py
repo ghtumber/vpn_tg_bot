@@ -204,6 +204,7 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "regain_user_access")
 async def handle_regain_user_access(callback: CallbackQuery):
+    await callback.answer("")
     user: User = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
     if user.moneyBalance < use_BASIC_VPN_COST():
         await callback.message.answer(text="❌ Недостаточно <b>средств</b> на балансе.", reply_markup=MENU_KEYBOARD_MARKUP)
@@ -217,7 +218,7 @@ async def handle_regain_user_access(callback: CallbackQuery):
     new_date = add_months(user.PaymentDate, 1)
     epoch = datetime.utcfromtimestamp(0)
     user.xclient.enable = True
-    await data["inbound"].update_client(user.xclient, {"expiryTime": (datetime.datetime(new_date.year, new_date.month, new_date.day) - epoch).total_seconds() * 1000, "enable": True})
+    await data["inbound"].update_client(user.xclient, {"expiryTime": (datetime(new_date.year, new_date.month, new_date.day) - epoch).total_seconds() * 1000, "enable": True})
     await data["inbound"].reset_client_traffic(user.xclient.for_api())
     user.change("PaymentDate", new_date)
     await user.xclient.get_key(XSERVERS)

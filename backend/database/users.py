@@ -20,7 +20,7 @@ class UsersDatabase:
 
     @classmethod
     async def get_all_users(cls, size=100, page=1) -> None | list[User]:
-        """Don't use if you can!!!"""
+        """Don't use if you can!!! Returns  list[User], count_of_rows"""
         async with aiohttp.ClientSession() as session:
             response = await session.get(
                 f"https://api.baserow.io/api/database/rows/table/{cls.TABLE_ID}/?user_field_names=true&size={size}&page={page}",
@@ -53,12 +53,12 @@ class UsersDatabase:
                             if server.name == result["serverName"]:
                                 break
                             server = None
-                        xClient = server.get_client_info(result["uuid"])
+                        xClient = await server.get_client_info(result["uuid"])
                     res.append(User(id=int(result["id"]), userID=int(result["userID"]), userTG=result["userTG"], outline_client=outlineClient,
                             xclient=xClient, PaymentSum=int(result["PaymentSum"]), PaymentDate=PaymentDate,
                             serverName=result["serverName"], uuid=result["uuid"], serverType=result["serverType"]["value"],
-                            lastPaymentDate=lastPaymentDate, Protocol=result["Protocol"]["value"], moneyBalance=result["moneyBalance"]))
-                return res
+                            lastPaymentDate=lastPaymentDate, Protocol=result["Protocol"]["value"], moneyBalance=float(result["moneyBalance"])))
+                return res, int(obj["count"])
             else:
                 print(f"##########\nException: Get all users request ERROR!\n{text}\n##########")
                 return None
@@ -166,14 +166,15 @@ class UsersDatabase:
                 raise Exception(f"Create request ERROR!\n{text}")
 
     @classmethod
-    async def update_user(cls, user: User, change: dict = dict) -> User | Exception:
+    async def update_user(cls, user: User, change: dict = None) -> User | Exception:
         """
         change accepts dict formed like this: {"field_to_change": new_value}
         !!! new_value need to be in accepted datatype
         !!! field_to_change need to fully equal field you need to change
         """
-        for field, value in change.items():
-            user.change(field=field, new_value=value)
+        if change:
+            for field, value in change.items():
+                user.change(field=field, new_value=value)
         if user.outline_client:
             key = user.outline_client.key
             keyLimit = user.outline_client.keyLimit

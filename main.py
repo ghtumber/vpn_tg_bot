@@ -121,7 +121,7 @@ async def menu(message: Message, *args, **kwargs):
                         [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
                         [InlineKeyboardButton(text="👉 Оплатить VPN", callback_data="regain_user_access")]
                     ])
-                    await message.answer(text=EXHAUSTED_USER_GREETING_REPLY, reply_markup=keyboard)
+                    await message.answer(text=EXHAUSTED_USER_GREETING_REPLY(user=user), reply_markup=keyboard)
                     return
 
             elif user.outline_client:
