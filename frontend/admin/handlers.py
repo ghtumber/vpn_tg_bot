@@ -342,7 +342,8 @@ async def handle_xserver_new_client_data_limiting(message: Message, state: FSMCo
     if data["expiryDate"]:
         print(f"{time.timezone=}")
         epoch = datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0) - timedelta(seconds=time.timezone)
-        expiryTime = (datetime(data["expiryDate"].year, data["expiryDate"].month, data["expiryDate"].day, hour=0, minute=0) - epoch + timedelta(hours=19)).total_seconds() * 1000
+        delta = timedelta(hours=14) if time.timezone == 0 else timedelta(hours=19)
+        expiryTime = (datetime(data["expiryDate"].year, data["expiryDate"].month, data["expiryDate"].day, hour=0, minute=0) - epoch + delta).total_seconds() * 1000
     xclient: XClient = await data["inbound"].add_client(email=data["email"], totalBytes=data["data_limit"]*1024**3, expiryTime=expiryTime)
     answer = f"""
 ✅ <b>Ключ создан</b>
