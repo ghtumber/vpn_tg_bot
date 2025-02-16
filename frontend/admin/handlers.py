@@ -1,3 +1,4 @@
+import time
 from datetime import date, datetime, timedelta
 import re
 from enum import Enum
@@ -339,8 +340,9 @@ async def handle_xserver_new_client_data_limiting(message: Message, state: FSMCo
     await state.clear()
     expiryTime = 0
     if data["expiryDate"]:
-        epoch = datetime.utcfromtimestamp(0)
-        expiryTime = (datetime(data["expiryDate"].year, data["expiryDate"].month, data["expiryDate"].day) - epoch).total_seconds() * 1000
+        print(f"{time.timezone=}")
+        epoch = datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0) - timedelta(seconds=time.timezone)
+        expiryTime = (datetime(data["expiryDate"].year, data["expiryDate"].month, data["expiryDate"].day, hour=0, minute=0) - epoch + timedelta(hours=19)).total_seconds() * 1000
     xclient: XClient = await data["inbound"].add_client(email=data["email"], totalBytes=data["data_limit"]*1024**3, expiryTime=expiryTime)
     answer = f"""
 ✅ <b>Ключ создан</b>
@@ -412,7 +414,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
     epoch = datetime.utcfromtimestamp(0)
     expriryDate = epoch + timedelta(milliseconds=xclient.expiryTime)
     exprDate = f"{expriryDate.strftime('%A %d.%m.%Y')}"
-    print(f"{client_traffics=}\n{xclient=}")
+    # print(f"{client_traffics=}\n{xclient=}")
     answer = f"""
 ✅ <b>Ключ</b>
 {'🌚 <b>Отключен</b>' if not xclient.enable else '🌝 <b>Активен</b>'}
@@ -441,6 +443,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
 
 @router.callback_query(F.data == "admin_offClient")
 async def handle_admin_disable_xclient(callback: CallbackQuery, state: FSMContext):
+    await callback.answer("")
     prev_text = callback.message.text
     packed = prev_text.split("|api|")[1].split(":")
     inbound = None
@@ -521,6 +524,7 @@ async def handle_xserver_client_enabling(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "admin_delClient")
 async def handle_admin_delete_xclient(callback: CallbackQuery, state: FSMContext):
+    await callback.answer("")
     await state.set_state(XserverClientDeleting.inbound)
     prev_text = callback.message.text
     packed = prev_text.split("|api|")[1].split(":")
@@ -615,7 +619,7 @@ async def handle_key_data_limiting(message: Message, state: FSMContext):
     key: OutlineKey = data["server"].create_new_key(name=data["name"], data_limit_gb=data["data_limit"])
     link = str(key.access_url).split("?")[0] + "#Proxym1ty-VPN"
     #raise Exception(f"{key=}")
-    print(f"{key=}")
+    # print(f"{key=}")
     answer = f"""
 ✅ <b>Ключ создан</b>
 📛 <b>Название</b>: {key.name}

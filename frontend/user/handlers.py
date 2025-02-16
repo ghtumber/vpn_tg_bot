@@ -1,6 +1,7 @@
 import asyncio
 import re
-from datetime import date, datetime
+import time
+from datetime import date, datetime, timedelta
 from typing import Protocol
 
 from aiogram import Router, F
@@ -164,7 +165,7 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
         await message.delete()
         return 0
     data = await state.get_data()
-    epoch = datetime.utcfromtimestamp(0)
+    epoch = datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0) - timedelta(seconds=time.timezone)
     user.change("moneyBalance", user.moneyBalance - use_BASIC_VPN_COST())
     dat = add_months(date.today(), 1)
     user.PaymentDate = dat
@@ -173,7 +174,7 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
     user.serverName = data["server"].name
     for inb in data["server"].inbounds:
         if inb.protocol == data["keyType"].lower():
-            expiryTime = (datetime(dat.year, dat.month, dat.day) - epoch).total_seconds() * 1000
+            expiryTime = (datetime(dat.year, dat.month, dat.day) - epoch + timedelta(hours=19)).total_seconds() * 1000
             client = await inb.add_client(email=message.from_user.username, tgId=message.from_user.id, totalBytes=500*1024**3, expiryTime=expiryTime)
             user.xclient = client
             user.Protocol = data["keyType"]
@@ -216,9 +217,9 @@ async def handle_regain_user_access(callback: CallbackQuery):
     data = await user.xclient.get_server_and_inbound(XSERVERS)
     user.change("moneyBalance", user.moneyBalance - user.PaymentSum)
     new_date = add_months(user.PaymentDate, 1)
-    epoch = datetime.utcfromtimestamp(0)
+    epoch = datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0) - timedelta(seconds=time.timezone)
     user.xclient.enable = True
-    await data["inbound"].update_client(user.xclient, {"expiryTime": (datetime(new_date.year, new_date.month, new_date.day) - epoch).total_seconds() * 1000, "enable": True})
+    await data["inbound"].update_client(user.xclient, {"expiryTime": (datetime(new_date.year, new_date.month, new_date.day) - epoch + timedelta(hours=19)).total_seconds() * 1000, "enable": True})
     await data["inbound"].reset_client_traffic(user.xclient.for_api())
     user.change("PaymentDate", new_date)
     await user.xclient.get_key(XSERVERS)
