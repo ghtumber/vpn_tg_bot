@@ -174,7 +174,7 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
     user.serverName = data["server"].name
     for inb in data["server"].inbounds:
         if inb.protocol == data["keyType"].lower():
-            delta = timedelta(hours=14) if time.timezone == 0 else timedelta(hours=19)
+            delta = timedelta(hours=15) if time.timezone == 0 else timedelta(hours=20)
             expiryTime = (datetime(dat.year, dat.month, dat.day) - epoch + delta).total_seconds() * 1000
             client = await inb.add_client(email=message.from_user.username, tgId=message.from_user.id, totalBytes=500*1024**3, expiryTime=expiryTime)
             user.xclient = client
