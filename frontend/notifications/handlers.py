@@ -43,7 +43,7 @@ async def payment_system():
                     user.xclient = await svr.get_client_info(identifier=user.uuid)
                     break
             if user.xclient:
-                print(f"[INFO] {user.xclient=} {datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000)}")
+                # print(f"[INFO] {user.xclient=} {datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000)}")
                 # Payment system
                 if timedelta(hours=24) > (datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000) - now) >= timedelta(minutes=0):
                     data = await user.xclient.get_server_and_inbound(XSERVERS)
@@ -93,7 +93,7 @@ async def check_period():
             for svr in XSERVERS:
                 if svr.name == user.serverName:
                     server = svr
-                    user.xclient = svr.get_client_info(identifier=user.uuid)
+                    user.xclient = await svr.get_client_info(identifier=user.uuid)
                     user_traffic = await svr.get_client_traffics(uuid=user.xclient.uuid)
                     user_traffic = user_traffic["up"] + user_traffic["down"]
                     break
