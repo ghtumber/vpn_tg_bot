@@ -174,5 +174,7 @@ async def handle_admin_send_global_notification_state_2(message: Message, state:
 
 tz = timedelta(seconds=time.timezone).total_seconds() // 3600
 period_checker_scheduler.add_job(func=check_period, day_of_week='mon-sun', trigger="cron", hour=int(17+tz), minute=30)
+print(f"check_period will be in {int(17+tz)}")
 period_checker_scheduler.add_job(func=payment_system, day_of_week='mon-sun', trigger="cron", hour=int(23+tz), minute=15)
+print(f"payment_system will be in {int(23+tz)}")
 #period_checker_scheduler.add_job(func=payment_system, trigger="interval", minutes=1)
