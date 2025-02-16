@@ -171,6 +171,6 @@ async def handle_admin_send_global_notification_state_2(message: Message, state:
         await state.clear()
 
 
-period_checker_scheduler.add_job(func=check_period, day_of_week='mon-sun', trigger="cron", hour=14, minute=30)
-period_checker_scheduler.add_job(func=check_period, day_of_week='mon-sun', trigger="cron", hour=23, minute=30)
+period_checker_scheduler.add_job(func=check_period, day_of_week='mon-sun', trigger="cron", hour=12, minute=30)
+period_checker_scheduler.add_job(func=payment_system, day_of_week='mon-sun', trigger="cron", hour=18, minute=15)
 #period_checker_scheduler.add_job(func=payment_system, trigger="interval", minutes=1)
