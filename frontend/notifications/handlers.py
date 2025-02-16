@@ -55,8 +55,9 @@ async def payment_system():
                         user.change("moneyBalance", user.moneyBalance - user.PaymentSum)
                         new_date = add_months(user.PaymentDate, 1)
                         epoch = datetime.datetime.utcfromtimestamp(0)
+                        delta = timedelta(hours=14) if time.timezone == 0 else timedelta(hours=19)
                         await inbound.update_client(user.xclient, {
-                            "expiryTime": (datetime.datetime(new_date.year, new_date.month, new_date.day) - epoch).total_seconds() * 1000})
+                            "expiryTime": (datetime.datetime(new_date.year, new_date.month, new_date.day) - epoch + delta).total_seconds() * 1000})
                         await inbound.reset_client_traffic(user.xclient.for_api())
                         user.change("PaymentDate", new_date)
                         await user.xclient.get_key(XSERVERS)
