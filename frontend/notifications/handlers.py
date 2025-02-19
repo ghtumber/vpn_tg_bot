@@ -47,7 +47,10 @@ async def payment_system():
             if user.xclient:
                 # print(f"[INFO] {user.xclient=} {datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000)}")
                 # Payment system
-                if timedelta(hours=24) > (datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000) - now) >= timedelta(minutes=0):
+
+                # TESTING PART
+                # if timedelta(hours=24) > (datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000) - now) >= timedelta(minutes=0):
+                if date.today() == datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000).date():
                     data = await user.xclient.get_server_and_inbound(XSERVERS)
                     inbound: Inbound = data["inbound"]
                     if user.moneyBalance >= user.PaymentSum:
@@ -177,6 +180,6 @@ tz = timedelta(seconds=time.timezone).total_seconds() // 3600
 delta = -5 if time.timezone == 0 else 0
 period_checker_scheduler.add_job(func=check_period, day_of_week='mon-sun', trigger="cron", hour=int(17+tz+delta), minute=30)
 print(f"check_period will be in {int(17+tz+delta)}")
-period_checker_scheduler.add_job(func=payment_system, day_of_week='mon-sun', trigger="cron", hour=int(23+tz+delta), minute=15)
+period_checker_scheduler.add_job(func=payment_system, day_of_week='mon-sun', trigger="cron", hour=int(19+tz+delta), minute=15)
 print(f"payment_system will be in {int(23+tz+delta)}")
 #period_checker_scheduler.add_job(func=payment_system, trigger="interval", minutes=1)
