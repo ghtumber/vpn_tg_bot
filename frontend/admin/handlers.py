@@ -226,7 +226,7 @@ async def handle_admin_change_user_balance_confirmation(message: Message, state:
 
 @router.callback_query((F.data == "admin_update_all_xserver_shiit") & (F.message.from_user.id in ADMINS))
 async def handle_create_xserver_client(callback: CallbackQuery):
-    if (datetime.now() - use_LAST_ALL_XSERVERS_UPDATE()) >= timedelta(minutes=1):
+    if (datetime.now() - use_LAST_ALL_XSERVERS_UPDATE()) >= timedelta(minutes=5):
         await callback.answer(text="( ◡̀_◡́)ᕤ Now updating...", show_alert=True)
         await get_servers()
         await callback.message.answer(text=f"😎 Yap! All data updated!!!")
