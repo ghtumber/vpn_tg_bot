@@ -16,7 +16,7 @@ from backend.database.users import UsersDatabase
 from backend.models import User, XClient
 from frontend.replys import *
 from frontend.admin.payment_manager_handlers import router as payment_manager_router
-from globals import ADMINS, MENU_KEYBOARD_MARKUP, XSERVERS
+from globals import ADMINS, MENU_KEYBOARD_MARKUP, use_XSERVERS, use_LAST_ALL_XSERVERS_UPDATE, get_servers
 from backend.outline.managers import SERVERS
 
 router = Router()
@@ -222,6 +222,17 @@ async def handle_admin_change_user_balance_confirmation(message: Message, state:
     await message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)
 
 
+#----------------------------------------------SERVER DATA UPDATER---------------------------------
+
+@router.callback_query((F.data == "admin_update_all_xserver_shiit") & (F.message.from_user.id in ADMINS))
+async def handle_create_xserver_client(callback: CallbackQuery):
+    if (datetime.now() - use_LAST_ALL_XSERVERS_UPDATE()) >= timedelta(minutes=1):
+        await callback.answer(text="( ◡̀_◡́)ᕤ Now updating...", show_alert=True)
+        await get_servers()
+        await callback.message.answer(text=f"😎 Yap! All data updated!!!")
+    else:
+        await callback.answer("Not so frequent")
+
 #-----------------------------------------------Managers-------------------------------------------
 @router.callback_query((F.data == "admin_manage_xservers") & (F.message.from_user.id in ADMINS))
 async def handle_create_xserver_client(callback: CallbackQuery):
@@ -230,9 +241,10 @@ async def handle_create_xserver_client(callback: CallbackQuery):
         inline_keyboard=[
             [InlineKeyboardButton(text="➕ Создать клиента", callback_data="admin_create_xserver_client"),
              InlineKeyboardButton(text="🚹 Информация по клиенту", callback_data="admin_get_xserver_client_info")],
+            [InlineKeyboardButton(text="🔃 Обновить все данные", callback_data="admin_update_all_xserver_shiit")]
         ]
     )
-    await callback.message.answer(f"Доступно {len(XSERVERS)} XServers.", reply_markup=MENU_KEYBOARD_MARKUP)
+    await callback.message.answer(f"Доступно {len(use_XSERVERS())} XServers.", reply_markup=MENU_KEYBOARD_MARKUP)
     await callback.message.answer("⚡ Вот что можно сделать сейчас.", reply_markup=keyboard)
 
 
@@ -256,13 +268,13 @@ async def handle_create_xserver_client(callback: CallbackQuery, state: FSMContex
 
     def build_kb():
         builder = ReplyKeyboardBuilder()
-        for ind in range(len(XSERVERS)):
-            builder.button(text=f"{str(ind + 1)}) {XSERVERS[ind].name}")
+        for ind in range(len(use_XSERVERS())):
+            builder.button(text=f"{str(ind + 1)}) {use_XSERVERS()[ind].name}")
         builder.button(text="❌ Отмена")
-        if len(XSERVERS) % 2 == 0:
-            builder.adjust(*[2 for _ in range(len(XSERVERS) // 2)], 1)
+        if len(use_XSERVERS()) % 2 == 0:
+            builder.adjust(*[2 for _ in range(len(use_XSERVERS()) // 2)], 1)
         else:
-            builder.adjust(*[2 for _ in range(len(XSERVERS) // 2 + 1)], 1)
+            builder.adjust(*[2 for _ in range(len(use_XSERVERS()) // 2 + 1)], 1)
         return builder.as_markup(resize_keyboard=True)
 
     await callback.message.answer("🌐 Доступные сервера:", reply_markup=build_kb())
@@ -273,7 +285,7 @@ async def handle_create_xserver_client(callback: CallbackQuery, state: FSMContex
 @router.message(XserverClientCreation.server)
 async def handle_xserver_new_client_server_selection(message: Message, state: FSMContext):
     try:
-        server = XSERVERS[int(message.text.split(")")[0]) - 1]
+        server = use_XSERVERS()[int(message.text.split(")")[0]) - 1]
     except IndexError:
         await message.answer("Ошибка ❗\nВероятно такого сервера нет 😑")
         return 0
@@ -298,7 +310,7 @@ async def handle_xserver_new_client_server_selection(message: Message, state: FS
 @router.message(XserverClientCreation.inbound)
 async def handle_xserver_new_client_inbound(message: Message, state: FSMContext):
     try:
-        inbound = XSERVERS[int(message.text.split(")")[0].split(".")[0])].inbounds[int(message.text.split(")")[0].split(".")[1]) - 1]
+        inbound = use_XSERVERS()[int(message.text.split(")")[0].split(".")[0])].inbounds[int(message.text.split(")")[0].split(".")[1]) - 1]
     except IndexError:
         await message.answer("Ошибка ❗\nВероятно такого сервера нет 😑")
         return 0
@@ -363,13 +375,13 @@ async def handle_get_xserver_client_info(callback: CallbackQuery, state: FSMCont
 
     def build_kb():
         builder = ReplyKeyboardBuilder()
-        for ind in range(len(XSERVERS)):
-            builder.button(text=f"{str(ind + 1)}) {XSERVERS[ind].name}")
+        for ind in range(len(use_XSERVERS())):
+            builder.button(text=f"{str(ind + 1)}) {use_XSERVERS()[ind].name}")
         builder.button(text="❌ Отмена")
-        if len(XSERVERS) % 2 == 0:
-            builder.adjust(*[2 for _ in range(len(XSERVERS) // 2)], 1)
+        if len(use_XSERVERS()) % 2 == 0:
+            builder.adjust(*[2 for _ in range(len(use_XSERVERS()) // 2)], 1)
         else:
-            builder.adjust(*[2 for _ in range(len(XSERVERS) // 2 + 1)], 1)
+            builder.adjust(*[2 for _ in range(len(use_XSERVERS()) // 2 + 1)], 1)
         return builder.as_markup(resize_keyboard=True)
 
     await callback.message.answer("🌐 Доступные сервера:", reply_markup=build_kb())
@@ -380,7 +392,7 @@ async def handle_get_xserver_client_info(callback: CallbackQuery, state: FSMCont
 @router.message(XserverClientListing.server)
 async def handle_xserver_xclient_person_selection(message: Message, state: FSMContext):
     try:
-        server = XSERVERS[int(message.text.split(")")[0]) - 1]
+        server = use_XSERVERS()[int(message.text.split(")")[0]) - 1]
     except IndexError:
         await message.answer("Ошибка ❗\nВероятно такого сервера нет 😑")
         return 0
@@ -425,7 +437,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
 🛰 <b>Сервер</b>: {data["server"].name}
 ⏹ <b>Трафик</b>: {round((client_traffics["up"] + client_traffics["down"]) / 1024**3, 2)}/{xclient.totalGB / 1024**3}GB
 🕓 <b>Истекает</b>: {exprDate}
-🔑 <b>Ключ</b>: <pre><code>{await xclient.get_key(XSERVERS)}</code></pre>
+🔑 <b>Ключ</b>: <pre><code>{await xclient.get_key(use_XSERVERS())}</code></pre>
 <span class="tg-spoiler">|api|{data["server"].name}:{inbound.id}:{xclient.uuid}|api|</span>
 """
     if xclient.enable:
@@ -449,7 +461,7 @@ async def handle_admin_disable_xclient(callback: CallbackQuery, state: FSMContex
     packed = prev_text.split("|api|")[1].split(":")
     inbound = None
     client = None
-    for srv in XSERVERS:
+    for srv in use_XSERVERS():
         if srv.name == packed[0]:
             for inb in srv.inbounds:
                 if inb.id == int(packed[1]):
@@ -489,7 +501,7 @@ async def handle_admin_enable_xclient(callback: CallbackQuery, state: FSMContext
     packed = prev_text.split("|api|")[1].split(":")
     inbound = None
     client = None
-    for srv in XSERVERS:
+    for srv in use_XSERVERS():
         if srv.name == packed[0]:
             for inb in srv.inbounds:
                 if inb.id == int(packed[1]):
@@ -530,7 +542,7 @@ async def handle_admin_delete_xclient(callback: CallbackQuery, state: FSMContext
     prev_text = callback.message.text
     packed = prev_text.split("|api|")[1].split(":")
     inbound = None
-    for srv in XSERVERS:
+    for srv in use_XSERVERS():
         if srv.name == packed[0]:
             for inb in srv.inbounds:
                 if inb.id == int(packed[1]):

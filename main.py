@@ -71,6 +71,10 @@ async def TA(message: Message, *args, **kwargs):
     user: User = await UsersDatabase.get_user_by(ID=str(message.from_user.id))
     await message.answer(text=TECH_ASSISTANCE_RESPONSE(user=user), reply_markup=MENU_KEYBOARD_MARKUP)
 
+@dp.callback_query(F.data == "user_get_TA_help")
+async def get_TA(callback: CallbackQuery, *args, **kwargs):
+    await TA(callback.message)
+    await callback.answer("")
 
 @dp.callback_query(F.data == "cancel_of_cancel")
 async def cancel_of_cancel(callback: CallbackQuery):
@@ -89,11 +93,12 @@ async def admin_menu(message: Message):
     )
 
     online_users_count = 0
-    for server in XSERVERS:
+    # print(f"{''.join([' ' + r.ip for r in use_XSERVERS()])}")
+    for server in use_XSERVERS():
         online_users = await server.get_online_users()
         online_users_count += len(online_users)
 
-    await message.answer(ADMIN_GREETING_REPLY(username=message.from_user.username, online_users_count=online_users_count, next_ws_update=NEXT_WS_UPDATE, servers_count=len(XSERVERS)), reply_markup=MENU_KEYBOARD_MARKUP)
+    await message.answer(ADMIN_GREETING_REPLY(username=message.from_user.username, online_users_count=online_users_count, next_ws_update=NEXT_WS_UPDATE, servers_count=len(use_XSERVERS())), reply_markup=MENU_KEYBOARD_MARKUP)
     await message.answer("⚡ Вот что можно сделать сейчас.", reply_markup=keyboard)
 
 
@@ -109,21 +114,31 @@ async def menu(message: Message, *args, **kwargs):
         user: User = await UsersDatabase.get_user_by(ID=str(user_id))
         if user:
             if user.xclient:
-                if user.xclient.enable:
-                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                        [InlineKeyboardButton(text="📊 Использование", callback_data="xclient_vpn_usage"), InlineKeyboardButton(text="🔑 Ключ", callback_data="view_user_key")],
-                        [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
-                        [InlineKeyboardButton(text="📘 Инструкции", callback_data=f"get_{user.Protocol}_instructions")]
-                    ])
-                    server = [s for s in XSERVERS if s.name == user.serverName][0]
-                else:
-                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                        [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
-                        [InlineKeyboardButton(text="👉 Оплатить VPN", callback_data="regain_user_access")]
-                    ])
-                    await message.answer(text=EXHAUSTED_USER_GREETING_REPLY(user=user), reply_markup=keyboard)
+                if user.xclient != "None":
+                    if user.xclient.enable:
+                        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                            [InlineKeyboardButton(text="📊 Использование", callback_data="xclient_vpn_usage"), InlineKeyboardButton(text="🔑 Ключ", callback_data="view_user_key")],
+                            [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
+                            [InlineKeyboardButton(text="📘 Инструкции", callback_data=f"get_{user.Protocol}_instructions")]
+                        ])
+                        server = [s for s in use_XSERVERS() if s.name == user.serverName][0]
+                    else:
+                        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                            [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
+                            [InlineKeyboardButton(text="👉 Оплатить VPN", callback_data="regain_user_access")]
+                        ])
+                        await message.answer(text=EXHAUSTED_USER_GREETING_REPLY(user=user), reply_markup=keyboard)
+                        return
+                elif user.xclient == "None":
+                    keyboard = InlineKeyboardMarkup(
+                        inline_keyboard=[
+                            [InlineKeyboardButton(text="🚨Тех. поддержка", callback_data="user_get_TA_help")]
+                        ]
+                    )
+                    await message.answer(SERVER_ERROR_USER_GREETING_REPLY(user), reply_markup=keyboard)
+                    for admin in ADMINS:
+                        await bot.send_message(chat_id=admin, text=f"У {user.userTG} потерян доступ к серверу. Вероятно <b>сервер недоступен</b>.")
                     return
-
             elif user.outline_client:
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="view_user_key")],
@@ -167,11 +182,13 @@ def between_callback(callback_func):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(listen_to_centrifugo(callback_func))
-    loop.close()
+    # loop.close()
 
 async def main():
+    await get_servers()
     period_checker_scheduler.start()
-    await dp.start_polling(bot)
+    server_checker_scheduler.start()
+    await dp.start_polling(bot, polling_timeout=60)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)

@@ -2,7 +2,8 @@ import json
 import aiohttp
 from backend.models import User, OutlineClient, XClient
 from datetime import date
-from globals import DB_TOKEN, XSERVERS, DEBUG, TEST_DB_TOKEN, TABLE_ID, TEST_TABLE_ID, DB_SERVER_TYPES, DB_PROTOCOL_TYPES, DB_TEST_SERVER_TYPES, DB_TEST_PROTOCOL_TYPES
+from globals import DB_TOKEN, DEBUG, TEST_DB_TOKEN, TABLE_ID, TEST_TABLE_ID, DB_SERVER_TYPES, DB_PROTOCOL_TYPES, \
+    DB_TEST_SERVER_TYPES, DB_TEST_PROTOCOL_TYPES, use_XSERVERS
 
 
 class UsersDatabase:
@@ -49,11 +50,12 @@ class UsersDatabase:
                     if result["serverType"]["value"] == "Outline":
                         outlineClient = OutlineClient(keyID=int(result["keyID"]), key=result["key"], keyLimit=float(result["keyLimit"]))
                     elif result["serverType"]["value"] == "XSERVER":
-                        for server in XSERVERS:
+                        for server in use_XSERVERS():
                             if server.name == result["serverName"]:
                                 break
                             server = None
-                        xClient = await server.get_client_info(result["uuid"])
+                        if server:
+                            xClient = await server.get_client_info(result["uuid"])
                     res.append(User(id=int(result["id"]), userID=int(result["userID"]), userTG=result["userTG"], outline_client=outlineClient,
                             xclient=xClient, PaymentSum=int(result["PaymentSum"]), PaymentDate=PaymentDate,
                             serverName=result["serverName"], uuid=result["uuid"], serverType=result["serverType"]["value"],
@@ -108,14 +110,18 @@ class UsersDatabase:
                 if serverType["value"] == "Outline":
                     outlineClient = OutlineClient(keyID=int(u["keyID"]), key=u["key"], keyLimit=float(u["keyLimit"]))
                 elif serverType["value"] == "XSERVER":
-                    for server in XSERVERS:
+                    for server in use_XSERVERS():
                         if server.name == u["serverName"]:
                             break
                         server = None
-                    if u["Protocol"]["value"] == "ShadowSocks":
-                        xClient: XClient = await server.get_client_info(u["userTG"][1:])
-                    elif u["Protocol"]["value"] == "VLESS":
-                        xClient: XClient = await server.get_client_info(UUID)
+                    if server is None:
+                        # await get_servers()
+                        xClient = "None"
+                    else:
+                        if u["Protocol"]["value"] == "ShadowSocks":
+                            xClient: XClient = await server.get_client_info(u["userTG"][1:])
+                        elif u["Protocol"]["value"] == "VLESS":
+                            xClient: XClient = await server.get_client_info(UUID)
                 return User(id=int(u["id"]), userID=int(u["userID"]), userTG=u["userTG"], outline_client=outlineClient, xclient=xClient, PaymentSum=int(u["PaymentSum"]),
                             PaymentDate=PaymentDate, serverName=u["serverName"], uuid=UUID, lastPaymentDate=lastPaymentDate, serverType=serverType["value"],
                             Protocol=u["Protocol"]["value"], moneyBalance=float(u["moneyBalance"]))

@@ -15,7 +15,7 @@ from frontend.notifications.models import GlobalNotification
 from datetime import date, timedelta
 from frontend.replys import *
 from backend.database.users import UsersDatabase
-from globals import DEBUG, bot, XSERVERS, add_months
+from globals import DEBUG, bot, add_months, use_XSERVERS
 
 router = Router()
 period_checker_scheduler = AsyncIOScheduler()
@@ -39,7 +39,7 @@ async def payment_system():
         all_users, _ = await UsersDatabase.get_all_users(page=page, size=100)
         for user in all_users:
             server: XServer = None
-            for svr in XSERVERS:
+            for svr in use_XSERVERS():
                 if svr.name == user.serverName:
                     server = svr
                     user.xclient = await svr.get_client_info(identifier=user.uuid)
@@ -51,7 +51,7 @@ async def payment_system():
                 # TESTING PART
                 # if timedelta(hours=24) > (datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000) - now) >= timedelta(minutes=0):
                 if date.today() == datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000).date():
-                    data = await user.xclient.get_server_and_inbound(XSERVERS)
+                    data = await user.xclient.get_server_and_inbound(use_XSERVERS())
                     inbound: Inbound = data["inbound"]
                     if user.moneyBalance >= user.PaymentSum:
                         print(f"[PAYMENT PROCEED] {user.userTG} ({user.moneyBalance}) - {user.PaymentSum}")
@@ -63,13 +63,13 @@ async def payment_system():
                             "expiryTime": (datetime.datetime(new_date.year, new_date.month, new_date.day) - epoch + delta).total_seconds() * 1000})
                         await inbound.reset_client_traffic(user.xclient.for_api())
                         user.change("PaymentDate", new_date)
-                        await user.xclient.get_key(XSERVERS)
+                        await user.xclient.get_key(use_XSERVERS())
                         await UsersDatabase.update_user(user)
                         await bot.send_message(chat_id=user.userID, text=PAYMENT_SUCCESS(user))
                         continue
                     else:
                         user.xclient.enable = False
-                        await user.xclient.get_key(XSERVERS)
+                        await user.xclient.get_key(use_XSERVERS())
                         await inbound.update_client(user.xclient, {"enable": False})
                         await UsersDatabase.update_user(user)
                         kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -96,7 +96,7 @@ async def check_period():
         all_users, _ = await UsersDatabase.get_all_users(page=page, size=100)
         for user in all_users:
             server: XServer = None
-            for svr in XSERVERS:
+            for svr in use_XSERVERS():
                 if svr.name == user.serverName:
                     server = svr
                     user.xclient = await svr.get_client_info(identifier=user.uuid)
@@ -181,5 +181,5 @@ delta = -5 if time.timezone == 0 else 0
 period_checker_scheduler.add_job(func=check_period, day_of_week='mon-sun', trigger="cron", hour=int(17+tz+delta), minute=30)
 print(f"check_period will be in {int(17+tz+delta)}")
 period_checker_scheduler.add_job(func=payment_system, day_of_week='mon-sun', trigger="cron", hour=int(19+tz+delta), minute=15)
-print(f"payment_system will be in {int(23+tz+delta)}")
+print(f"payment_system will be in {int(19+tz+delta)}")
 #period_checker_scheduler.add_job(func=payment_system, trigger="interval", minutes=1)

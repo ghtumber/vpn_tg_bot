@@ -16,7 +16,7 @@ from backend.xapi.servers import XServer
 from frontend.replys import *
 from backend.outline.managers import SERVERS, OutlineManager
 from backend.database.users import UsersDatabase
-from globals import add_months, XSERVERS, MENU_KEYBOARD_MARKUP, use_BASIC_VPN_COST, DEBUG, use_PREFERRED_PAYMENT_SETTINGS, bot
+from globals import add_months, MENU_KEYBOARD_MARKUP, use_BASIC_VPN_COST, DEBUG, use_PREFERRED_PAYMENT_SETTINGS, bot, use_XSERVERS
 
 router = Router()
 
@@ -77,7 +77,7 @@ async def handle_key_payment_server_type(message: Message, state: FSMContext):
     await state.update_data(configuration_type=configuration_type)
     if configuration_type == "Auto":
         svr = None
-        for server in XSERVERS:
+        for server in use_XSERVERS():
             if server.name == use_PREFERRED_PAYMENT_SETTINGS()["server_name"]:
                 svr = server
                 break
@@ -90,18 +90,18 @@ async def handle_key_payment_server_type(message: Message, state: FSMContext):
     elif configuration_type == "Manual":
         def build_kb():
             builder = ReplyKeyboardBuilder()
-            for ind in range(len(XSERVERS)):
+            for ind in range(len(use_XSERVERS())):
                 location_imoji = ''
-                if 'Germany' in XSERVERS[ind].location:
+                if 'Germany' in use_XSERVERS()[ind].location:
                     location_imoji = '🇩🇪'
-                elif 'Finland' in XSERVERS[ind].location:
+                elif 'Finland' in use_XSERVERS()[ind].location:
                     location_imoji = '🇫🇮'
-                builder.button(text=f"{str(ind + 1)}) {location_imoji}{XSERVERS[ind].name}")
+                builder.button(text=f"{str(ind + 1)}) {location_imoji}{use_XSERVERS()[ind].name}")
             builder.button(text="❌ Отмена")
-            if len(XSERVERS) % 2 == 0:
-                builder.adjust(*[2 for _ in range(len(XSERVERS) // 2)], 1)
+            if len(use_XSERVERS()) % 2 == 0:
+                builder.adjust(*[2 for _ in range(len(use_XSERVERS()) // 2)], 1)
             else:
-                builder.adjust(*[2 for _ in range(len(XSERVERS) // 2 + 1)], 1)
+                builder.adjust(*[2 for _ in range(len(use_XSERVERS()) // 2 + 1)], 1)
             return builder.as_markup(resize_keyboard=True)
         await state.set_state(KeyPayment.server)
         await message.answer(text=f"✅ Отлично! 🏳 Теперь выберите сервер", reply_markup=build_kb())
@@ -109,7 +109,7 @@ async def handle_key_payment_server_type(message: Message, state: FSMContext):
 @router.message(KeyPayment.server)
 async def handle_key_payment_server(message: Message, state: FSMContext):
     try:
-        server = XSERVERS[int(message.text.split(")")[0]) - 1]
+        server = use_XSERVERS()[int(message.text.split(")")[0]) - 1]
     except IndexError:
         await message.answer("Ошибка ❗\nВероятно такого сервера нет 😑")
         return 0
@@ -206,26 +206,28 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "regain_user_access")
 async def handle_regain_user_access(callback: CallbackQuery):
-    await callback.answer("")
+    await asyncio.sleep(0.5)
     user: User = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
-    if user.moneyBalance < use_BASIC_VPN_COST():
-        await callback.message.answer(text="❌ Недостаточно <b>средств</b> на балансе.", reply_markup=MENU_KEYBOARD_MARKUP)
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💳 Пополнить баланс", url=DonatPAYHandler.form_link(user=user))]
-        ])
-        await callback.message.answer(text="💰 <b>Пополните</b> баланс.", reply_markup=kb)
-        return 0
-    data = await user.xclient.get_server_and_inbound(XSERVERS)
-    user.change("moneyBalance", user.moneyBalance - user.PaymentSum)
-    new_date = add_months(user.PaymentDate, 1)
-    epoch = datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0) - timedelta(seconds=time.timezone)
-    user.xclient.enable = True
-    await data["inbound"].update_client(user.xclient, {"expiryTime": (datetime(new_date.year, new_date.month, new_date.day) - epoch + timedelta(hours=19)).total_seconds() * 1000, "enable": True})
-    await data["inbound"].reset_client_traffic(user.xclient.for_api())
-    user.change("PaymentDate", new_date)
-    await user.xclient.get_key(XSERVERS)
-    await UsersDatabase.update_user(user)
-    await callback.message.answer(text=PAYMENT_SUCCESS(user), reply_markup=MENU_KEYBOARD_MARKUP)
+    if (datetime.fromtimestamp(user.xclient.expiryTime // 1000).date() - date.today()) > timedelta(days=-1):
+        if user.moneyBalance < use_BASIC_VPN_COST():
+            await callback.message.answer(text="❌ Недостаточно <b>средств</b> на балансе.", reply_markup=MENU_KEYBOARD_MARKUP)
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="💳 Пополнить баланс", url=DonatPAYHandler.form_link(user=user))]
+            ])
+            await callback.message.answer(text="💰 <b>Пополните</b> баланс.", reply_markup=kb)
+            return 0
+        data = await user.xclient.get_server_and_inbound(use_XSERVERS())
+        user.change("moneyBalance", user.moneyBalance - user.PaymentSum)
+        new_date = add_months(user.PaymentDate, 1)
+        epoch = datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0) - timedelta(seconds=time.timezone)
+        user.xclient.enable = True
+        await data["inbound"].update_client(user.xclient, {"expiryTime": (datetime(new_date.year, new_date.month, new_date.day) - epoch + timedelta(hours=19)).total_seconds() * 1000, "enable": True})
+        await data["inbound"].reset_client_traffic(user.xclient.for_api())
+        user.change("PaymentDate", new_date)
+        await user.xclient.get_key(use_XSERVERS())
+        await UsersDatabase.update_user(user)
+        await callback.message.answer(text=PAYMENT_SUCCESS(user), reply_markup=MENU_KEYBOARD_MARKUP)
+    await callback.answer("")
 
 
 @router.callback_query(F.data == "user_registration")
@@ -247,7 +249,7 @@ async def handle_registration(callback: CallbackQuery):
 async def handle_xclient_vpn_usage(callback: CallbackQuery):
     await callback.answer(text='')
     user = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
-    d = await user.xclient.get_server_and_inbound(servers=XSERVERS)
+    d = await user.xclient.get_server_and_inbound(servers=use_XSERVERS())
     server: XServer = d["server"]
     if user.Protocol == "VLESS":
         keyInfo = await server.get_client_traffics(uuid=user.uuid)
@@ -270,7 +272,7 @@ async def handle_vpn_key(callback: CallbackQuery):
     await callback.answer(text='')
     user = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
     if user.xclient:
-        key = await user.xclient.get_key(servers=XSERVERS)
+        key = await user.xclient.get_key(servers=use_XSERVERS())
     else:
         key = user.outline_client.key
     answer = f"""

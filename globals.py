@@ -10,6 +10,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from dotenv import load_dotenv
 from os import getenv
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from backend.xapi.servers import GET_XSERVERS
 
 load_dotenv()
@@ -18,8 +19,7 @@ load_dotenv()
 DEBUG = True
 """###################################"""
 
-def get_servers():
-    XSERVERS.extend(asyncio.run(GET_XSERVERS()))
+
 
 def get_donat_pay_token() -> str:
     DONATPAY_API_KEY = getenv('DONATPAY_API_KEY')
@@ -38,7 +38,7 @@ def add_months(sourcedate, months):
 print(f"[TIMEZONE] {time.tzname} UTC{'+' if time.timezone < 0 else '-'}{-time.timezone // 3600}")
 
 TOKEN = getenv("BOT_TOKEN") if not DEBUG else getenv("DEBUG_BOT_TOKEN")
-ADMINS = [902448626, 1124386913] # 1124386913
+ADMINS = [902448626] # 1124386913
 
 DONATPAY_API_KEY = get_donat_pay_token()
 DONATION_WIDGET_URL = getenv('DONATION_WIDGET_URL')
@@ -48,7 +48,15 @@ OUTLINE_CERT_SHA256_1 = getenv('CERT_SHA_1')
 OUTLINE_API_URL_2 = getenv('API_URL_2')
 OUTLINE_CERT_SHA256_2 = getenv('CERT_SHA_2')
 XSERVERS = []
-get_servers()
+
+def use_XSERVERS() -> list:
+    global XSERVERS
+    # print(f"use_XSERVERS()={XSERVERS}")
+    return XSERVERS
+
+def edit_XSERVERS_var(new):
+    global XSERVERS
+    XSERVERS = new
 
 # Database tokens & tables (one token has access to one table)
 DB_TOKEN = getenv("DB_TOKEN")
@@ -64,7 +72,25 @@ DB_TEST_PROTOCOL_TYPES = {"ShadowSocks": 2447417, "VLESS": 2447418, "None": 2447
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
 NEXT_WS_UPDATE = datetime.datetime.now()
+LAST_ALL_XSERVERS_UPDATE = datetime.datetime.now()
 SHUTDOWN = False
+
+def use_LAST_ALL_XSERVERS_UPDATE() -> datetime.datetime:
+    global LAST_ALL_XSERVERS_UPDATE
+    return LAST_ALL_XSERVERS_UPDATE
+
+def edit_LAST_ALL_XSERVERS_UPDATE(new):
+    global LAST_ALL_XSERVERS_UPDATE
+    LAST_ALL_XSERVERS_UPDATE = new
+
+server_checker_scheduler = AsyncIOScheduler()
+async def get_servers():
+    servers, removed = await GET_XSERVERS()
+    if removed:
+        for admin in ADMINS:
+            await bot.send_message(chat_id=admin, text=f"<b>Cервера {''.join([r.ip for r in removed])} недоступны</b>.")
+    edit_XSERVERS_var(servers)
+server_checker_scheduler.add_job(func=get_servers, trigger="interval", hours=2)
 
 DEFAULT_PAYMENT_SETTINGS = {"server_name": "XServer@94.159.100.60", "keyType": "VLESS", "coast": 150}
 def get_preferred_payment_settings():

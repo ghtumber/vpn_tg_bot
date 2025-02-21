@@ -7,7 +7,8 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardBut
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 
 from frontend.replys import ADMIN_PAYMENTS_MANAGER_REPLY
-from globals import ADMINS, XSERVERS, use_BASIC_VPN_COST, use_PREFERRED_PAYMENT_SETTINGS, MENU_KEYBOARD_MARKUP, edit_preferred_payment_settings, DONATION_WIDGET_URL
+from globals import ADMINS, use_BASIC_VPN_COST, use_PREFERRED_PAYMENT_SETTINGS, MENU_KEYBOARD_MARKUP, \
+    edit_preferred_payment_settings, DONATION_WIDGET_URL, use_XSERVERS
 
 router = Router()
 
@@ -57,7 +58,7 @@ async def handle_admin_change_payment_defaults_server(callback: CallbackQuery, s
     await callback.answer("")
 
     answer = "🌐 Доступные сервера:"
-    for server in XSERVERS:
+    for server in use_XSERVERS():
         answer += f"\n🌍:{server.location} ɪᴘ: <code>{server.ip}</code>"
     answer += "\n\nВыбери IP нужного сервера."
     await callback.message.answer(answer, reply_markup=CANCEL_KB)
@@ -69,7 +70,7 @@ async def handle_admin_change_payment_defaults_server(callback: CallbackQuery, s
 async def handle_admin_change_payment_defaults_server_ip(message: Message, state: FSMContext):
     try:
         if len(message.text.split(".")) == 4:
-            server = [server for server in XSERVERS if server.ip == message.text.strip()][0]
+            server = [server for server in use_XSERVERS() if server.ip == message.text.strip()][0]
         else:
             raise IndexError
     except IndexError:

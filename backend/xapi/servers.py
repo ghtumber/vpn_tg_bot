@@ -8,6 +8,8 @@ import uuid
 from http.cookies import SimpleCookie
 import aiohttp
 import base64
+
+from aiohttp import ClientTimeout
 from dotenv import load_dotenv
 from os import getenv
 from datetime import datetime, timedelta
@@ -33,24 +35,31 @@ class XServer:
         self.session_start_time = datetime(2000, 1, 1)
         self.last_update_time = datetime(2000, 1, 1)
 
-    async def get_session(self) -> SimpleCookie:
+    async def get_session(self) -> SimpleCookie | None:
         now = datetime.today()
         if (now - self.session_start_time) > timedelta(hours=1):
-            await self.login()
+            exist = await self.login()
+            if exist is None:
+                return None
             self.session_start_time = now
         return self.login_cookies
 
-    async def check_data(self):
+    async def check_data(self, force=False):
         now = datetime.today()
-        if (now - self.last_update_time) > timedelta(minutes=10):
-            await self.get_inbounds()
+        if (now - self.last_update_time) > timedelta(minutes=10) or force:
+            exist = await self.get_inbounds()
+            if exist is None:
+                return None
             self.last_update_time = now
 
     async def login(self):
         """Logins into system and returns self"""
-        async with aiohttp.ClientSession() as session:
-            data = {"username": self.LOGIN, "password": self.PASSWORD}
-            resp = await session.post(url=f"https://{self.ip}:{self.port}/{self.path}/login", data=data, ssl=ssl_context)
+        async with aiohttp.ClientSession(timeout=ClientTimeout(total=20.0)) as session:
+            try:
+                data = {"username": self.LOGIN, "password": self.PASSWORD}
+                resp = await session.post(url=f"https://{self.ip}:{self.port}/{self.path}/login", data=data, ssl=ssl_context)
+            except TimeoutError:
+                return None
         if resp.status == 200:
             js = await resp.json()
             if js["success"]:
@@ -72,6 +81,7 @@ class XServer:
 
     async def get_client_traffics(self, email: str = None, uuid: str = None) -> dict:
         """Return client traffics data by email or uuid"""
+        await self.get_session()
         if email:
             link = f"https://{self.ip}:{self.port}/{self.path}/panel/api/inbounds/getClientTraffics/{email}"
         elif uuid:
@@ -126,31 +136,37 @@ class XServer:
 
     async def get_inbounds(self):
         """Gets all XServer inbounds, returns self"""
-        await self.get_session()
-        async with aiohttp.ClientSession() as s:
-            resp = await s.get(url=f"https://{self.ip}:{self.port}/{self.path}/panel/api/inbounds/list", ssl=ssl_context, cookies=self.login_cookies)
-            if resp.status == 200:
-                js = await resp.json()
-                obj = js["obj"]
-                if not js["success"]:
-                    raise Exception(f"[{resp.status}]Get inbound data exception! {js['msg']}")
-                if len(obj) > 0:
-                    self.inbounds = []
-                    for inb in obj:
-                        inb_id = inb["id"]
-                        predata = dict()
-                        predata["settings"] = json.loads(inb["settings"])
-                        predata["streamSettings"] = json.loads(inb["streamSettings"])
-                        predata["sniffing"] = json.loads(inb["sniffing"])
-                        predata["protocol"] = inb["protocol"]
-                        predata["vpn_port"] = inb["port"]
-                        predata["clientStats"] = inb["clientStats"]
-                        if inb["allocate"] != '':
-                            predata["allocate"] = json.loads(inb["allocate"])
-                        self.inbounds.append(Inbound(id=inb_id, server=self, predata=predata))
-                self.last_update_time = datetime.today()
-                return self
-        raise Exception(f"[{resp.status}]Get data exception! Check: URI, COOKIES")
+        exits = await self.get_session()
+        if exits:
+            async with aiohttp.ClientSession() as s:
+                try:
+                    resp = await s.get(url=f"https://{self.ip}:{self.port}/{self.path}/panel/api/inbounds/list", ssl=ssl_context, cookies=self.login_cookies, timeout=ClientTimeout(total=10.0))
+                except TimeoutError:
+                    return None
+                if resp.status == 200:
+                    js = await resp.json()
+                    obj = js["obj"]
+                    if not js["success"]:
+                        raise Exception(f"[{resp.status}]Get inbound data exception! {js['msg']}")
+                    if len(obj) > 0:
+                        self.inbounds = []
+                        for inb in obj:
+                            inb_id = inb["id"]
+                            predata = dict()
+                            predata["settings"] = json.loads(inb["settings"])
+                            predata["streamSettings"] = json.loads(inb["streamSettings"])
+                            predata["sniffing"] = json.loads(inb["sniffing"])
+                            predata["protocol"] = inb["protocol"]
+                            predata["vpn_port"] = inb["port"]
+                            predata["clientStats"] = inb["clientStats"]
+                            if inb["allocate"] != '':
+                                predata["allocate"] = json.loads(inb["allocate"])
+                            self.inbounds.append(Inbound(id=inb_id, server=self, predata=predata))
+                    self.last_update_time = datetime.today()
+                    return self
+            raise Exception(f"[{resp.status}]Get data exception! Check: URI, COOKIES")
+        else:
+            return None
 
 
 class Inbound:
@@ -308,13 +324,26 @@ class Inbound:
 
 
 
-async def GET_XSERVERS() -> list[XServer]:
+async def GET_XSERVERS() -> (list[XServer], list[XServer]):
     XSERVERS = [XServer(ip="94.159.100.60", port=59999, path="PROXY"),
-                XServer(ip="178.236.243.245", port=59999, path="PROXY"),
+                # XServer(ip="178.236.243.245", port=59999, path="PROXY"),
                 XServer(ip="94.159.98.138", port=59999, path="PROXY"),
                 XServer(ip="89.39.121.125", port=59999, path="PROXY"),
                 XServer(ip="87.120.165.75", port=59999, path="PROXY"),]
+    removed = []
+    i = 0
     for server in XSERVERS:
-        await server.get_inbounds()
-        print(f"[LOG] XServer {server.name} connected successfully")
-    return XSERVERS
+        try:
+            exist = await server.get_inbounds()
+            if exist:
+                print(f"[LOG] XServer {server.name} connected successfully")
+            else:
+                XSERVERS.pop(i)
+                removed.append(server)
+                print(f"[LOG] XServer {server.name} NOT connected, some problem")
+        except aiohttp.ConnectionTimeoutError:
+            XSERVERS.pop(i)
+            removed.append(server)
+            print(f"[LOG] XServer {server.name} NOT connected, some problem")
+        i += 1
+    return XSERVERS, removed
