@@ -38,7 +38,7 @@ def add_months(sourcedate, months):
 print(f"[TIMEZONE] {time.tzname} UTC{'+' if time.timezone < 0 else '-'}{-time.timezone // 3600}")
 
 TOKEN = getenv("BOT_TOKEN") if not DEBUG else getenv("DEBUG_BOT_TOKEN")
-ADMINS = [902448626] # 1124386913
+ADMINS = [902448626, 1124386913] # 1124386913
 
 DONATPAY_API_KEY = get_donat_pay_token()
 DONATION_WIDGET_URL = getenv('DONATION_WIDGET_URL')
