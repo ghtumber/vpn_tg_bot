@@ -110,6 +110,7 @@ async def menu(message: Message, *args, **kwargs):
         user_id = message.from_user.id
     if user_id in ADMINS:
         await admin_menu(message)
+        return
     else:
         user: User = await UsersDatabase.get_user_by(ID=str(user_id))
         if user:
