@@ -98,7 +98,7 @@ async def admin_menu(message: Message):
         online_users = await server.get_online_users()
         online_users_count += len(online_users)
 
-    await message.answer(ADMIN_GREETING_REPLY(username=message.from_user.username, online_users_count=online_users_count, next_ws_update=NEXT_WS_UPDATE, servers_count=len(use_XSERVERS())), reply_markup=MENU_KEYBOARD_MARKUP)
+    await message.answer(ADMIN_GREETING_REPLY(username=f"@{message.from_user.username}", online_users_count=online_users_count, next_ws_update=NEXT_WS_UPDATE, servers_count=len(use_XSERVERS())), reply_markup=MENU_KEYBOARD_MARKUP)
     await message.answer("⚡ Вот что можно сделать сейчас.", reply_markup=keyboard)
 
 
@@ -178,8 +178,13 @@ def update_global_next_ws_update(new):
     global NEXT_WS_UPDATE
     NEXT_WS_UPDATE = get_utc_time(new)
 
+async def restart_ws_thread(task: asyncio.Future):
+    print(f"[TESTING FUNC restart_ws_thread()] Sleep for 20 secs now")
+    await asyncio.sleep(20)
+    was = task.cancel()
+    print(f"[TESTING FUNC restart_ws_thread()] TASK CANCELED? {was=}")
 
-def between_callback(callback_func):
+def between_callback(callback_func, restart_ws_thread):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(listen_to_centrifugo(callback_func))
@@ -196,12 +201,12 @@ if __name__ == "__main__":
     dp.include_router(user_router)
     dp.include_router(admin_router)
     dp.include_router(notifications_router)
-    t = Thread(target=between_callback, args=[update_global_next_ws_update], name="Centrifugo listener")
+    centrifugo_thread = Thread(target=between_callback, args=[update_global_next_ws_update, restart_ws_thread], name="Centrifugo listener")
     try:
-        t.start()
+        centrifugo_thread.start()
         asyncio.run(main())
     except KeyboardInterrupt:
         SHUTDOWN = True
         print("Shutting down...")
-        t.join()
+        centrifugo_thread.join()
         # sys.exit()

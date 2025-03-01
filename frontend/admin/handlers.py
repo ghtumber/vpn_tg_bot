@@ -430,7 +430,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
     # print(f"{client_traffics=}\n{xclient=}")
     answer = f"""
 ✅ <b>Ключ</b>
-{'🌚 <b>Отключен</b>' if not xclient.enable else '🌝 <b>Активен</b>'}
+{'🌚 <b>Отключен</b>' if not xclient.enable else '🌝 <b>Включён</b>'}
 📛 <b>Название</b>: {xclient.email}
 🆔 <b>UUID</b>: {xclient.uuid}
 📡 <b>Протокол</b>: {"ShadowSocks" if not xclient.flow else "VLESS"}

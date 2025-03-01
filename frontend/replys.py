@@ -165,6 +165,14 @@ NEW_DONATION_ADMIN_REPLY = lambda name, comment, sum, user, success, error: f"""
 💰New balance: {user.moneyBalance}''' if success else '⛔ User не найден'}"""
 
 
+CENTRIFUGO_ERROR = lambda exception, equivalent: f"""
+🆘 <b>Centifugo error!!!</b>
+🕓 Time out: {equivalent}
+Trying to avoid and restart...
+🔴 Exception: <pre><code>{exception}</code></pre>
+"""
+
+
 BALANCE_TOPUP_USER_REPLY = lambda user, sum: f"""
 ✅ <b>Пополнение баланса</b> на сумму {sum} руб!
 💵 <b>Баланс</b>: {user.moneyBalance} руб."""

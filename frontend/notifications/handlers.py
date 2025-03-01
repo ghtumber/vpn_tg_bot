@@ -47,9 +47,6 @@ async def payment_system():
             if user.xclient:
                 # print(f"[INFO] {user.xclient=} {datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000)}")
                 # Payment system
-
-                # TESTING PART
-                # if timedelta(hours=24) > (datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000) - now) >= timedelta(minutes=0):
                 if date.today() == datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000).date():
                     data = await user.xclient.get_server_and_inbound(use_XSERVERS())
                     inbound: Inbound = data["inbound"]
