@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import datetime
 import json
 import time
@@ -92,7 +93,18 @@ async def get_servers():
     edit_XSERVERS_var(servers)
 server_checker_scheduler.add_job(func=get_servers, trigger="interval", hours=2)
 
-DEFAULT_PAYMENT_SETTINGS = {"server_name": "XServer@94.159.100.60", "keyType": "VLESS", "coast": 150}
+
+@dataclasses.dataclass()
+class Tariffs:
+    PROMO: str = "PROMO"
+    MAX: str = "MAX"
+
+DEFAULT_PAYMENT_SETTINGS = {"Tariffs":{
+                                "PROMO": {"server_name": "XServer@94.159.100.60", "keyType": "VLESS", "coast": 85},
+                                "MAX": {"server_name": "XServer@89.39.121.125", "keyType": "VLESS", "coast": 180}
+                            },
+                            "Available_Tariffs": [Tariffs.MAX, Tariffs.PROMO]}
+
 def get_preferred_payment_settings():
     try:
         preferred_payment_settings = json.load(fp=open("preferred_payment_settings.json", "r+"))
@@ -104,20 +116,25 @@ def get_preferred_payment_settings():
     return preferred_payment_settings
 
 def edit_preferred_payment_settings(new):
-    global PREFERRED_PAYMENT_SETTINGS, BASIC_VPN_COST
+    global PREFERRED_PAYMENT_SETTINGS, BASIC_VPN_COST, Available_Tariffs
     PREFERRED_PAYMENT_SETTINGS = new
     _ = open("preferred_payment_settings.json", "w+")
     json.dump(new, _)
     _.close()
-    BASIC_VPN_COST = new["coast"]
+    # BASIC_VPN_COST = new["coast"]
 
 PREFERRED_PAYMENT_SETTINGS = get_preferred_payment_settings()
-BASIC_VPN_COST = PREFERRED_PAYMENT_SETTINGS["coast"]
+All_Tariffs = [Tariffs.MAX, Tariffs.PROMO]
+Available_Tariffs = PREFERRED_PAYMENT_SETTINGS["Available_Tariffs"]
+BASIC_VPN_COST = 100
+
+def use_Available_Tariffs() -> list:
+    return Available_Tariffs
 
 def use_BASIC_VPN_COST() -> int:
     return BASIC_VPN_COST
 
-def use_PREFERRED_PAYMENT_SETTINGS() -> dict[str:str]:
+def use_PREFERRED_PAYMENT_SETTINGS() -> dict:
     return PREFERRED_PAYMENT_SETTINGS
 
 

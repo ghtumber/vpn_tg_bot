@@ -70,15 +70,12 @@ class OutlineClient:
 
 
 class User:
-    def __init__(self, userID: int, userTG: str, PaymentSum: int, PaymentDate: date, lastPaymentDate: date, serverName: str, serverType: str,
+    def __init__(self, userID: int, userTG: str, PaymentSum: int, PaymentDate: date, serverName: str, serverType: str,
                  Protocol: str, moneyBalance: float, xclient: XClient = None, outline_client: OutlineClient = None, id: int = None, uuid: str = ""):
         self.id = id
         self.uuid = uuid
         self.moneyBalance = moneyBalance
-        if type(lastPaymentDate) is date or type(lastPaymentDate) is NoneType:
-            self.lastPaymentDate = lastPaymentDate
-        else:
-            raise Exception(f"lastPaymentDate is not a [datetime.date or None] {type(lastPaymentDate)}")
+
         self.Protocol = Protocol
         self.serverType = serverType
         self.userID = userID

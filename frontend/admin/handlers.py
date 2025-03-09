@@ -111,7 +111,7 @@ async def handle_get_user_info(callback: CallbackQuery, state: FSMContext):
 
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="-1 стр", callback_data=f"users_pagination_minus_{page}"), InlineKeyboardButton(text="+1 стр", callback_data=f"users_pagination_plus_{page}")],
+            [InlineKeyboardButton(text="+1 стр", callback_data=f"users_pagination_plus_{page}")],
             [InlineKeyboardButton(text="❌ Отмена", callback_data="menu")]
         ]
     )
@@ -124,22 +124,45 @@ async def handle_get_user_info(callback: CallbackQuery, state: FSMContext):
 async def users_paginate_plus(callback: CallbackQuery, state: FSMContext):
     page = int(callback.data.split("_")[3])
     page += 1
-    users, _ = await UsersDatabase.get_all_users(page=page, size=25)
+    resp = await UsersDatabase.get_all_users(page=page, size=25)
+    if resp is None:
+        await callback.answer(text="❌ Это <b>последняя</b> страница")
+        return 0
+    users, _ = resp
     text = ""
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="-1 стр", callback_data=f"users_pagination_minus_{page}"),
+             InlineKeyboardButton(text="+1 стр", callback_data=f"users_pagination_plus_{page}")],
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="menu")]
+        ]
+    )
     for user in users:
         text += f"\n🏷UserTG: {user.userTG}  🆔: <code>{user.userID}</code>"
-    await callback.message.edit_text(text=f"Листинг пользователей страница {page}\n{text}\n❔ Выберите userID", parse_mode="HTML")
+    await callback.message.edit_text(text=f"Листинг пользователей страница {page}\n{text}\n❔ Выберите userID", parse_mode="HTML", reply_markup=kb)
 
 @router.callback_query(F.data.startswith("users_pagination_minus"))
 async def users_paginate_minus(callback: CallbackQuery, state: FSMContext):
     page = int(callback.data.split("_")[3])
+    resp = None
     if page - 1 > 0:
         page -= 1
-    users, _ = await UsersDatabase.get_all_users(page=page, size=25)
+        resp = await UsersDatabase.get_all_users(page=page, size=25)
+    if resp is None:
+        await callback.answer(text="❌ Это <b>первая</b> страница")
+        return 0
+    users, _ = resp
     text = ""
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="-1 стр", callback_data=f"users_pagination_minus_{page}"),
+             InlineKeyboardButton(text="+1 стр", callback_data=f"users_pagination_plus_{page}")],
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="menu")]
+        ]
+    )
     for user in users:
         text += f"\n🏷UserTG: {user.userTG}  🆔: <code>{user.userID}</code>"
-    await callback.message.edit_text(text=f"Листинг пользователей страница {page}\n{text}\n❔ Выберите userID", parse_mode="HTML")
+    await callback.message.edit_text(text=f"Листинг пользователей страница {page}\n{text}\n❔ Выберите userID", parse_mode="HTML", reply_markup=kb)
 
 @router.message(UsersListing.userID)
 async def handle_xserver_new_client_data_listing(message: Message, state: FSMContext):
@@ -154,7 +177,6 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
 📡 <b>Протокол</b>: {user.Protocol}
 🛰 <b>Сервер</b>: {user.serverType} -> {user.serverName}
 🕓 <b>Оплата</b>: {user.PaymentDate.strftime(r"%d.%m.%Y") if user.PaymentDate else "None"}
-🕓 <b>Посл. оплата</b>: {user.lastPaymentDate.strftime(r"%d.%m.%Y") if user.lastPaymentDate else "None"}
 <span class="tg-spoiler">|api|{user.userID}|api|</span>
 """
     kb = InlineKeyboardMarkup(

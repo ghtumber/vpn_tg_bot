@@ -147,10 +147,17 @@ async def menu(message: Message, *args, **kwargs):
                 ])
                 server = [s for s in SERVERS if s.name == user.serverName][0]
             else:
-                keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔓 Купить ключ", callback_data="buy_key")],
-                    [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")]
-                ])
+                if Available_Tariffs:
+                    kb_l = [
+                        [InlineKeyboardButton(text="🔓 Купить ключ", callback_data="buy_key")],
+                        [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")]
+                    ]
+                else:
+                    kb_l = [
+                        [InlineKeyboardButton(text="😕 Сейчас покупка недоступна", callback_data="user_get_TA_help")],
+                        [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")]
+                    ]
+                keyboard = InlineKeyboardMarkup(inline_keyboard=kb_l)
                 await message.answer(text=CLEAN_USER_GREETING_REPLY(user_balance=user.moneyBalance, username=user.userTG), reply_markup=keyboard)
                 return
             await message.answer(text=USER_GREETING_REPLY(username=user.userTG, paymentSum=user.PaymentSum, paymentDate=user.PaymentDate, serverName=user.serverName, serverLocation=server.location, user_balance=user.moneyBalance), reply_markup=keyboard)

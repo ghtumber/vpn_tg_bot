@@ -1,3 +1,4 @@
+from globals import All_Tariffs
 
 REPLY_REGISTRATION = f"""
 👋 Приветствуем в proxym1ty!
@@ -28,14 +29,16 @@ ADMIN_GREETING_REPLY = lambda username, online_users_count, next_ws_update, serv
 🔮 <b>Websocket next update</b>: {next_ws_update.strftime("%d.%m.%Y %H:%M:%S")} (UTC +0)
 """
 
-ADMIN_PAYMENTS_MANAGER_REPLY = lambda default_server, default_protocol, default_coast:f"""
+ADMIN_PAYMENTS_MANAGER_REPLY = lambda default_server, default_protocol, default_coast, Available_Tariffs:f"""
 🧾 Сейчас установлены следующие значения.
 
 Здесь ты можешь <b>управлять</b> ими.
 
-🌐 <b>Сервер сейчас</b>: {default_server}
-⛓ <b>Протокол сейчас</b>: {default_protocol}
-🏧 <b>Цена сейчас</b>: {default_coast}
+🌐 <b>Сервера сейчас</b>: {default_server}
+⛓ <b>Протокола сейчас</b>: {default_protocol}
+🏧 <b>Цены сейчас</b>: {default_coast}
+🟢 <b>Активных тарифов</b>: {len(Available_Tariffs)}
+🟡 <b>Отключено тарифов</b>: {len(All_Tariffs) - len(Available_Tariffs)}
 """
 
 USER_GREETING_REPLY = lambda username, paymentSum, paymentDate, serverName, serverLocation, user_balance: f"""

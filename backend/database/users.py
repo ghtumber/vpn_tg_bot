@@ -40,11 +40,6 @@ class UsersDatabase:
                         PaymentDate = date(int(PD[0]), int(PD[1]), int(PD[2]))
                     else:
                         PaymentDate = None
-                    if type(result["LastPaymentDate"]) is str:
-                        LPD = result["LastPaymentDate"].split("-")
-                        lastPaymentDate = date(int(LPD[0]), int(LPD[1]), int(LPD[2]))
-                    else:
-                        lastPaymentDate = None
                     xClient = None
                     outlineClient = None
                     if result["serverType"]["value"] == "Outline":
@@ -59,7 +54,7 @@ class UsersDatabase:
                     res.append(User(id=int(result["id"]), userID=int(result["userID"]), userTG=result["userTG"], outline_client=outlineClient,
                             xclient=xClient, PaymentSum=int(result["PaymentSum"]), PaymentDate=PaymentDate,
                             serverName=result["serverName"], uuid=result["uuid"], serverType=result["serverType"]["value"],
-                            lastPaymentDate=lastPaymentDate, Protocol=result["Protocol"]["value"], moneyBalance=float(result["moneyBalance"])))
+                            Protocol=result["Protocol"]["value"], moneyBalance=float(result["moneyBalance"])))
                 return res, int(obj["count"])
             else:
                 print(f"##########\nException: Get all users request ERROR!\n{text}\n##########")
@@ -98,11 +93,6 @@ class UsersDatabase:
                     PaymentDate = date(int(PD[0]), int(PD[1]), int(PD[2]))
                 else:
                     PaymentDate = None
-                if type(u["LastPaymentDate"]) is str:
-                    LPD = u["LastPaymentDate"].split("-")
-                    lastPaymentDate = date(int(LPD[0]), int(LPD[1]), int(LPD[2]))
-                else:
-                    lastPaymentDate = None
                 UUID = u["uuid"] if u["uuid"] else 0
                 serverType = u["serverType"]
                 outlineClient = None
@@ -123,7 +113,7 @@ class UsersDatabase:
                         elif u["Protocol"]["value"] == "VLESS":
                             xClient: XClient = await server.get_client_info(UUID)
                 return User(id=int(u["id"]), userID=int(u["userID"]), userTG=u["userTG"], outline_client=outlineClient, xclient=xClient, PaymentSum=int(u["PaymentSum"]),
-                            PaymentDate=PaymentDate, serverName=u["serverName"], uuid=UUID, lastPaymentDate=lastPaymentDate, serverType=serverType["value"],
+                            PaymentDate=PaymentDate, serverName=u["serverName"], uuid=UUID, serverType=serverType["value"],
                             Protocol=u["Protocol"]["value"], moneyBalance=float(u["moneyBalance"]))
             else:
                 print(f"##########\nException: Get request ERROR! {ID=} {TG=}\n{UUID=}\n{KEY=}\n{text}\n##########")
@@ -146,7 +136,6 @@ class UsersDatabase:
                     "keyLimit": None,
                     "PaymentSum": int(user.PaymentSum),
                     "PaymentDate": None,
-                    "LastPaymentDate": None,
                     "serverName": str(user.serverName),
                     "Protocol": str(user.Protocol),
                     "serverType": str(user.serverType),
@@ -162,12 +151,8 @@ class UsersDatabase:
                 if u["PaymentDate"]:
                     PD = u["PaymentDate"].split("-")
                     PaymentDate = date(int(PD[0]), int(PD[1]), int(PD[2]))
-                lastPaymentDate = None
-                if u["LastPaymentDate"]:
-                    LPD = u["LastPaymentDate"].split("-")
-                    lastPaymentDate = date(int(LPD[0]), int(LPD[1]), int(LPD[2]))
                 return User(id=user.id, userID=int(u["userID"]), userTG=u["userTG"], PaymentSum=int(u["PaymentSum"]), PaymentDate=PaymentDate, serverName=u["serverName"],
-                            lastPaymentDate=lastPaymentDate, serverType=user.serverType, Protocol=u["Protocol"], moneyBalance=0)
+                            serverType=user.serverType, Protocol=u["Protocol"], moneyBalance=0)
             else:
                 raise Exception(f"Create request ERROR!\n{text}")
 
@@ -191,11 +176,8 @@ class UsersDatabase:
             key = ""
             keyLimit = None
         PaymentDate = None
-        LastPaymentDate = None
         if user.PaymentDate:
             PaymentDate = str(user.PaymentDate.strftime("%Y-%m-%d"))
-        if user.lastPaymentDate:
-            LastPaymentDate = str(user.lastPaymentDate.strftime("%Y-%m-%d"))
         async with aiohttp.ClientSession() as session:
             response = await session.patch(
                 f"https://api.baserow.io/api/database/rows/table/{cls.TABLE_ID}/{user.id}/?user_field_names=true",
@@ -206,12 +188,11 @@ class UsersDatabase:
                 json={
                     "userID": user.userID,
                     "userTG": user.userTG,
-                    "Enabled": user.xclient.enable,
+                    "Enabled": user.xclient.enable if user.xclient else True,
                     "key": key,
                     "keyLimit": keyLimit,
                     "PaymentSum": int(user.PaymentSum),
                     "PaymentDate": PaymentDate,
-                    "LastPaymentDate": LastPaymentDate,
                     "serverName": str(user.serverName),
                     "Protocol": cls.PROTOCOL_TYPES[user.Protocol],
                     "serverType": cls.SERVER_TYPES[user.serverType],
@@ -227,14 +208,10 @@ class UsersDatabase:
                 if u["PaymentDate"]:
                     PD = u["PaymentDate"].split("-")
                     PaymentDate = date(int(PD[0]), int(PD[1]), int(PD[2]))
-                lastPaymentDate = None
-                if u["LastPaymentDate"]:
-                    LPD = u["LastPaymentDate"].split("-")
-                    lastPaymentDate = date(int(LPD[0]), int(LPD[1]), int(LPD[2]))
                 return User(id=user.id, userID=int(u["userID"]), userTG=u["userTG"], outline_client=user.outline_client,
                             xclient=user.xclient, PaymentSum=int(u["PaymentSum"]), moneyBalance=u["moneyBalance"],
                             PaymentDate=PaymentDate, serverName=u["serverName"], uuid=user.uuid,
-                            lastPaymentDate=lastPaymentDate, serverType=user.serverType, Protocol=u["Protocol"])
+                            serverType=user.serverType, Protocol=u["Protocol"])
             else:
                 raise Exception(f"!!! Update request ERROR!\n{text}")
 

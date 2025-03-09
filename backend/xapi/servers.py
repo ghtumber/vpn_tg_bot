@@ -24,9 +24,10 @@ ssl_context.verify_mode = ssl.CERT_NONE
 class XServer:
     LOGIN = getenv("SERVER_LOGIN")
     PASSWORD = getenv("SERVER_PASSWORD")
-    def __init__(self, ip, port, path, location="🇩🇪Germany"):
+    def __init__(self, ip, port, path, tariff, location="🇩🇪Germany"):
         self.name = f"XServer@{ip}"
         self.location = location
+        self.tariff = tariff
         self.ip = ip
         self.port = port
         self.path = path
@@ -325,11 +326,10 @@ class Inbound:
 
 
 async def GET_XSERVERS() -> (list[XServer], list[XServer]):
-    XSERVERS = [XServer(ip="94.159.100.60", port=59999, path="PROXY"),
-                # XServer(ip="178.236.243.245", port=59999, path="PROXY"),
-                XServer(ip="94.159.98.138", port=59999, path="PROXY"),
-                XServer(ip="89.39.121.125", port=59999, path="PROXY"),
-                XServer(ip="87.120.165.75", port=59999, path="PROXY"),]
+    XSERVERS = [XServer(ip="94.159.100.60", port=59999, path="PROXY", tariff="PROMO"),
+                XServer(ip="94.159.98.138", port=59999, path="PROXY", tariff="PROMO"),
+                XServer(ip="89.39.121.125", port=59999, path="PROXY", tariff="MAX"),
+                XServer(ip="87.120.165.75", port=59999, path="PROXY", tariff="PROMO"),]
     removed = []
     i = 0
     for server in XSERVERS:

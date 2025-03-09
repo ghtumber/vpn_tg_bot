@@ -16,7 +16,8 @@ from backend.xapi.servers import XServer
 from frontend.replys import *
 from backend.outline.managers import SERVERS, OutlineManager
 from backend.database.users import UsersDatabase
-from globals import add_months, MENU_KEYBOARD_MARKUP, use_BASIC_VPN_COST, DEBUG, use_PREFERRED_PAYMENT_SETTINGS, bot, use_XSERVERS
+from globals import add_months, MENU_KEYBOARD_MARKUP, use_BASIC_VPN_COST, DEBUG, use_PREFERRED_PAYMENT_SETTINGS, bot, use_XSERVERS, \
+    Available_Tariffs, use_Available_Tariffs
 
 router = Router()
 
@@ -36,6 +37,7 @@ class OldRegistration(StatesGroup):
     payment_sum = State()
 
 class KeyPayment(StatesGroup):
+    tariff = State()
     configuration_type = State()
     server = State()
     outline_server = State()
@@ -57,15 +59,44 @@ async def handle_topup_user_balance(callback: CallbackQuery):
 
 #----------------------------------------Key Payment----------------------------------------------
 @router.callback_query(F.data == "buy_key")
-async def handle_registration(callback: CallbackQuery, state: FSMContext):
+async def handle_buy_key(callback: CallbackQuery, state: FSMContext):
+    if not Available_Tariffs:
+        await callback.answer(text="😕 Сейчас покупка недоступна")
+        return
     await callback.answer(text='')
+    kb_l = []
+    for e in use_Available_Tariffs():
+        kb_l.append([InlineKeyboardButton(text=f"♦ {e}", callback_data=f"buy_key_tariff_{e}")])
+    kb_l.append([InlineKeyboardButton(text="❌ Отмена", callback_data="menu")])
+    keyboard = InlineKeyboardMarkup(inline_keyboard=kb_l)
+    answer = f"""
+🌟 Выбор <b>тарифа</b>.
+Выбери подходящий вам тариф:
+👉 <b>PROMO</b> подходит для тех, кто редко использует VPN (к примеру для просмотра Youtube)
+- 100 МБ/с канал на сервере (ограничены вашим соединением)
+- обычная тех. поддержка
+- возможны подвисания
+👉 <b>MAX</b> подходит для активных пользователей
+- 10 Gbit/s канал на сервере (ограничены вашим соединением)
+- приоритетная тех. поддержка
+- стабильный uptime 99%
+"""
+    await callback.message.answer(answer, reply_markup=keyboard)
+    await state.set_state(KeyPayment.tariff)
+
+@router.callback_query(F.data.startswith("buy_key_tariff_"))
+async def handle_buy_key(callback: CallbackQuery, state: FSMContext):
+    tariff = callback.data.split("_")[3]
+    await callback.answer("")
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="⚡ Авто подбор"), KeyboardButton(text="⚙ Ручная настройка")],
             [KeyboardButton(text="❌ Отмена")]
         ], resize_keyboard=True
     )
+    await state.update_data(tariff=tariff)
     await callback.message.answer(f"🔑 Выбор конфигурации VPN-ключа\nВыбери способ настройки:", reply_markup=keyboard)
+    await callback.message.delete()
     await state.set_state(KeyPayment.configuration_type)
 
 @router.message(KeyPayment.configuration_type)
@@ -74,46 +105,46 @@ async def handle_key_payment_server_type(message: Message, state: FSMContext):
         await message.answer(text="❌ Неверный <b>тип</b> сервера.\n\n‼ Выберите тип из <b>предложенных в списке</b>.")
         return 0
     configuration_type = "Auto" if "Авто подбор" in message.text.strip() else "Manual"
-    await state.update_data(configuration_type=configuration_type)
+    data = await state.get_data()
+    tariff = data["tariff"]
     if configuration_type == "Auto":
         svr = None
         for server in use_XSERVERS():
-            if server.name == use_PREFERRED_PAYMENT_SETTINGS()["server_name"]:
+            if server.name == use_PREFERRED_PAYMENT_SETTINGS()["Tariffs"][tariff]["server_name"]:
                 svr = server
                 break
         if not svr:
             await message.answer(text="😓 Ошибка сервера. Не найден сервер.\n🙏 Если вы видите это сообщение, пожалуйста, напишите в поддержку.")
             return 0
-        await state.update_data(server=svr, keyType=use_PREFERRED_PAYMENT_SETTINGS()["keyType"], auto=True)
+        await state.update_data(server=svr, keyType=use_PREFERRED_PAYMENT_SETTINGS()["Tariffs"][tariff]["keyType"], auto=True, tariff=tariff, configuration_type=configuration_type)
         await state.set_state(KeyPayment.keyType)
         await handle_key_payment_key_type(message=message, state=state)
     elif configuration_type == "Manual":
-        def build_kb():
-            builder = ReplyKeyboardBuilder()
-            for ind in range(len(use_XSERVERS())):
-                location_imoji = ''
-                if 'Germany' in use_XSERVERS()[ind].location:
-                    location_imoji = '🇩🇪'
-                elif 'Finland' in use_XSERVERS()[ind].location:
-                    location_imoji = '🇫🇮'
-                builder.button(text=f"{str(ind + 1)}) {location_imoji}{use_XSERVERS()[ind].name}")
-            builder.button(text="❌ Отмена")
-            if len(use_XSERVERS()) % 2 == 0:
-                builder.adjust(*[2 for _ in range(len(use_XSERVERS()) // 2)], 1)
-            else:
-                builder.adjust(*[2 for _ in range(len(use_XSERVERS()) // 2 + 1)], 1)
-            return builder.as_markup(resize_keyboard=True)
-        await state.set_state(KeyPayment.server)
-        await message.answer(text=f"✅ Отлично! 🏳 Теперь выберите сервер", reply_markup=build_kb())
+        svr = None
+        for server in use_XSERVERS():
+            if server.name == use_PREFERRED_PAYMENT_SETTINGS()["Tariffs"][tariff]["server_name"]:
+                svr = server
+                break
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="⚫ ShadowSocks"), KeyboardButton(text="🔵 VLESS")],
+                [KeyboardButton(text="❌ Отмена")]
+            ], resize_keyboard=True
+        )
+        await state.set_state(KeyPayment.keyType)
+        await state.update_data(tariff=tariff, server=svr, configuration_type=configuration_type)
+        await message.answer(text=f"📡 Теперь выберите протокол подключения\n\n‼ В последнее время в работе ShadowSocks замечены перебои!!!", reply_markup=keyboard)
 
 @router.message(KeyPayment.server)
 async def handle_key_payment_server(message: Message, state: FSMContext):
     try:
-        server = use_XSERVERS()[int(message.text.split(")")[0]) - 1]
+        data = await state.get_data()
+        servers = data["server_variants"]
+        server = servers[int(message.text.split(")")[0]) - 1]
     except IndexError:
         await message.answer("Ошибка ❗\nВероятно такого сервера нет 😑")
         return 0
-    await state.update_data(server=server)
+    await state.update_data(server=server, tariff=data["tariff"])
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="⚫ ShadowSocks"), KeyboardButton(text="🔵 VLESS")],
@@ -136,14 +167,15 @@ async def handle_key_payment_key_type(message: Message, state: FSMContext):
         protocol = data["keyType"]
 
     answer = f"""✅ Отлично. Выбрано:
-🌐 <b>Сервер</b> {data["server"].name}
-🏳 <b>Локация</b>: {data["server"].location}
+🌐 <b>Сервер</b> {data['server'].name}
+🏳 <b>Локация</b>: {data['server'].location}
 📡 <b>Протокол подключения</b>: {protocol} 
-💸 <b>Стоимость</b>: {use_BASIC_VPN_COST()}р
+⚡ <b>Скорость сети на сервере</b>: {'10 Gbit/s' if data["tariff"] == "MAX" else '100 МБ/c'}
+💸 <b>Стоимость</b>: {use_PREFERRED_PAYMENT_SETTINGS()['Tariffs'][data['tariff']]['coast']}р/мес
 🧾 Для продолжения <b>подтвердите</b> оплату
 """
     await state.set_state(KeyPayment.confirmation)
-    await state.update_data(configuration_type=data["configuration_type"], server=data["server"], keyType=protocol)
+    await state.update_data(configuration_type=data["configuration_type"], server=data["server"], keyType=protocol, tariff=data["tariff"])
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="✔ Подтвердить")],
@@ -155,7 +187,9 @@ async def handle_key_payment_key_type(message: Message, state: FSMContext):
 @router.message(KeyPayment.confirmation)
 async def handle_key_payment_confirmation(message: Message, state: FSMContext):
     user: User = await UsersDatabase.get_user_by(ID=str(message.from_user.id))
-    if user.moneyBalance < use_BASIC_VPN_COST():
+    data = await state.get_data()
+    coast = use_PREFERRED_PAYMENT_SETTINGS()["Tariffs"][data["tariff"]]["coast"]
+    if user.moneyBalance < coast:
         await message.answer(text="❌ Недостаточно <b>средств</b> на балансе.", reply_markup=MENU_KEYBOARD_MARKUP)
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="💳 Пополнить баланс", url=DonatPAYHandler.form_link(user=user))]
@@ -164,13 +198,11 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
         await state.clear()
         await message.delete()
         return 0
-    data = await state.get_data()
     epoch = datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0) - timedelta(seconds=time.timezone)
-    user.change("moneyBalance", user.moneyBalance - use_BASIC_VPN_COST())
+    user.change("moneyBalance", user.moneyBalance - coast)
     dat = add_months(date.today(), 1)
     user.PaymentDate = dat
-    user.lastPaymentDate = date.today()
-    user.PaymentSum = use_BASIC_VPN_COST()
+    user.PaymentSum = coast
     user.serverName = data["server"].name
     for inb in data["server"].inbounds:
         if inb.protocol == data["keyType"].lower():
@@ -197,6 +229,7 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
 🌐 <b>Сервер</b>: {data["server"].name}
 🏳 <b>Локация</b>: {data["server"].location}
 📡 <b>Протокол подключения</b>: {data["keyType"]}
+⚡ <b>Скорость сети на сервере</b>: {'10 Gbit/s' if data["tariff"] == "MAX" else '100 МБ/c'}
 ⏹ <b>Ограничение</b>: {totalGB}GB
 🔑 <b>Ключ</b>: <pre><code>{user.xclient.key}</code></pre>
     """
@@ -238,7 +271,7 @@ async def handle_registration(callback: CallbackQuery):
     if not u:
         if callback.from_user.username:
             user = User(userID=callback.from_user.id, userTG=f"@{callback.from_user.username}", PaymentSum=0, PaymentDate=None,
-                        serverName="", serverType="None", moneyBalance=0, Protocol="None", lastPaymentDate=None)
+                        serverName="", serverType="None", moneyBalance=0, Protocol="None")
             u = await UsersDatabase.create_user(user)
             await callback.message.answer(f"✅ Аккаунт создан!\n\n🔓 Доступ к меню открыт!", reply_markup=MENU_KEYBOARD_MARKUP)
         else:
