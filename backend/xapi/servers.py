@@ -328,8 +328,7 @@ class Inbound:
 async def GET_XSERVERS() -> (list[XServer], list[XServer]):
     XSERVERS = [XServer(ip="94.159.100.60", port=59999, path="PROXY", tariff="PROMO"),
                 XServer(ip="94.159.98.138", port=59999, path="PROXY", tariff="PROMO"),
-                XServer(ip="89.39.121.125", port=59999, path="PROXY", tariff="MAX"),
-                XServer(ip="87.120.165.75", port=59999, path="PROXY", tariff="PROMO"),]
+                XServer(ip="89.39.121.125", port=59999, path="PROXY", tariff="MAX"),]
     removed = []
     i = 0
     for server in XSERVERS:
