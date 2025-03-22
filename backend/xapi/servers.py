@@ -222,11 +222,11 @@ class Inbound:
                 return self
         raise Exception(f"[{resp.status}]Get data exception! Check: URI, COOKIES")\
 
-    async def add_client(self, email: str, tgId: int = 0, expiryTime: int = 0, totalBytes: int = 0) -> XClient:
+    async def add_client(self, email: str, tgId: int = 0, expiryTime: int = 0, totalBytes: int = 0, limitIp: int = 0) -> XClient:
         """Adds client to inbound, returns client with key"""
         await self.server.get_session()
         if self.protocol == "vless":
-            client = XClient(uuid=str(uuid.uuid4()), flow="xtls-rprx-vision", email=email, limitIp=0, totalGB=totalBytes, expiryTime=expiryTime,
+            client = XClient(uuid=str(uuid.uuid4()), flow="xtls-rprx-vision", email=email, limitIp=limitIp, totalGB=totalBytes, expiryTime=expiryTime,
                             enable=True, tgId=tgId, reset=0)
             settings = {"clients": [client.for_api()]}
             data = {
@@ -238,7 +238,7 @@ class Inbound:
             l = string.ascii_lowercase + string.digits
             password = base64.standard_b64encode(random_bytes).decode()
             subId = "".join(random.choice(l) for _ in range(16))
-            client = XClient(uuid=email, email=email, limitIp=0, totalGB=totalBytes, expiryTime=expiryTime, enable=True, tgId=tgId, reset=0,
+            client = XClient(uuid=email, email=email, limitIp=limitIp, totalGB=totalBytes, expiryTime=expiryTime, enable=True, tgId=tgId, reset=0,
                              password=password, subId=subId)
             settings = {"clients": [client.for_api()]}
             data = {

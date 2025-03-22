@@ -8,7 +8,7 @@ from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from backend.database.users import UsersDatabase
-from frontend.replys import NEW_DONATION_ADMIN_REPLY, BALANCE_TOPUP_USER_REPLY, CENTRIFUGO_ERROR
+from frontend.replys import NEW_DONATION_ADMIN_REPLY, BALANCE_TOPUP_USER_REPLY, CENTRIFUGO_ERROR, BALANCE_TOPUP_INVITER_REPLY
 from globals import ADMINS, DONATPAY_API_KEY, TOKEN, SHUTDOWN
 
 
@@ -56,6 +56,12 @@ async def handle_donat_pay_message(websocket):
                             try:
                                 user = await UsersDatabase.update_user(user, change={"moneyBalance": user.moneyBalance + float(sum)})
                                 kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="👤 Меню", callback_data="to_menu")]])
+                                # Referral system
+                                # if user.who_invited:
+                                #     inviter = await UsersDatabase.get_user_by(ID=user.who_invited)
+                                #     await UsersDatabase.update_user(inviter, {"moneyBalance": inviter.moneyBalance + (inviter.referBonus*float(sum)) })
+                                #     await send_bot_message(chat_id=inviter.userID, text=BALANCE_TOPUP_INVITER_REPLY(user, sum), kb=kb)
+
                                 await send_bot_message(chat_id=user.userID, text=BALANCE_TOPUP_USER_REPLY(user, sum), kb=kb)
                                 success = True
                             except Exception as e:

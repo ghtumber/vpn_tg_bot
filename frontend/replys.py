@@ -1,7 +1,9 @@
 from globals import All_Tariffs
 
-REPLY_REGISTRATION = f"""
+REPLY_REGISTRATION = lambda who_invited: f"""
 👋 Приветствуем в proxym1ty!
+{f'''
+😎 {who_invited} уже пользуется нашим VPN!''' if who_invited else ''}
 
 Мы рады, что вы выбрали нас для безопасного и приватного интернет-серфинга. Перед началом работы позвольте рассказать немного о том, что мы предлагаем:
 
@@ -41,7 +43,7 @@ ADMIN_PAYMENTS_MANAGER_REPLY = lambda default_server, default_protocol, default_
 🟡 <b>Отключено тарифов</b>: {len(All_Tariffs) - len(Available_Tariffs)}
 """
 
-USER_GREETING_REPLY = lambda username, paymentSum, paymentDate, serverName, serverLocation, user_balance: f"""
+USER_GREETING_REPLY = lambda username, paymentSum, paymentDate, tariff, serverLocation, user_balance: f"""
 ✨ <b>Привет</b> {username}
 
 📋 Это <b>главное меню Proxym1ty</b>
@@ -49,7 +51,7 @@ USER_GREETING_REPLY = lambda username, paymentSum, paymentDate, serverName, serv
 Здесь ты можешь управлять своим VPN и следить за использованием
 
 💵 <b>Баланс</b>: {user_balance}руб.
-🛰 <b>Сервер</b>: {serverName}
+⚡ <b>Тариф</b>: {tariff}
 🏳 <b>Страна VPN</b>: {serverLocation}
 💳 <b>Следующая оплата</b> — {paymentSum}руб. {paymentDate.strftime("%d.%m.%Y")}
 
@@ -175,6 +177,9 @@ Trying to avoid and restart...
 🔴 Exception: <pre><code>{exception}</code></pre>
 """
 
+BALANCE_TOPUP_INVITER_REPLY = lambda user, sum: f"""
+🤝 Бонус за реферала на сумму {sum} руб!
+💵 <b>Баланс</b>: {user.moneyBalance} руб."""
 
 BALANCE_TOPUP_USER_REPLY = lambda user, sum: f"""
 ✅ <b>Пополнение баланса</b> на сумму {sum} руб!

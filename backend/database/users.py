@@ -52,9 +52,10 @@ class UsersDatabase:
                         if server:
                             xClient = await server.get_client_info(result["uuid"])
                     res.append(User(id=int(result["id"]), userID=int(result["userID"]), userTG=result["userTG"], outline_client=outlineClient,
-                            xclient=xClient, PaymentSum=int(result["PaymentSum"]), PaymentDate=PaymentDate,
+                            xclient=xClient, PaymentSum=int(result["PaymentSum"]), PaymentDate=PaymentDate, tariff=result["tariff"],
                             serverName=result["serverName"], uuid=result["uuid"], serverType=result["serverType"]["value"],
-                            Protocol=result["Protocol"]["value"], moneyBalance=float(result["moneyBalance"])))
+                            Protocol=result["Protocol"]["value"], moneyBalance=float(result["moneyBalance"]), who_invited=result["who_invited"],
+                            referBonus=result["referBonus"]))
                 return res, int(obj["count"])
             else:
                 print(f"##########\nException: Get all users request ERROR!\n{text}\n##########")
@@ -113,10 +114,41 @@ class UsersDatabase:
                         elif u["Protocol"]["value"] == "VLESS":
                             xClient: XClient = await server.get_client_info(UUID)
                 return User(id=int(u["id"]), userID=int(u["userID"]), userTG=u["userTG"], outline_client=outlineClient, xclient=xClient, PaymentSum=int(u["PaymentSum"]),
-                            PaymentDate=PaymentDate, serverName=u["serverName"], uuid=UUID, serverType=serverType["value"],
-                            Protocol=u["Protocol"]["value"], moneyBalance=float(u["moneyBalance"]))
+                            PaymentDate=PaymentDate, serverName=u["serverName"], uuid=UUID, serverType=serverType["value"], tariff=u["tariff"],
+                            Protocol=u["Protocol"]["value"], moneyBalance=float(u["moneyBalance"]), who_invited=u["who_invited"], referBonus=u["referBonus"])
             else:
                 print(f"##########\nException: Get request ERROR! {ID=} {TG=}\n{UUID=}\n{KEY=}\n{text}\n##########")
+                return None
+
+    @classmethod
+    async def get_all_referrals(cls, ID: int) -> None | list[dict]:
+        """
+        :param ID: Telegram ID of inviter
+        :return: list of dicts typed: {"TG": str, "PaymentSum": int, "tariff": str}
+        """
+        if ID:
+            filters = {'filter_type': 'AND',
+                       'filters': [{'field': 'who_invited', 'type': 'equal', 'value': int(ID)}]}
+        else:
+            print(f"########## get_all_referrals()\nException: No data passed to get request!\n##########")
+            return None
+        async with aiohttp.ClientSession() as session:
+            response = await session.get(
+                f"https://api.baserow.io/api/database/rows/table/{cls.TABLE_ID}/?user_field_names=true&filters={json.dumps(filters)}",
+                headers={
+                    "Authorization": f"Token {cls.DB_TOKEN}"
+                }
+            )
+            text = await response.text()
+            u = json.loads(text)
+            if response.status == 200 and len(u["results"]) > 0:
+                results = u["results"]
+                res = []
+                for result in results:
+                    res.append({"TG": result["userTG"], "tariff": result["tariff"], "PaymentSum": int(result["PaymentSum"])})
+                return res
+            else:
+                print(f"########## get_all_referrals()\nException: Get request ERROR! {ID=}\n{text}\n##########")
                 return None
 
     @classmethod
@@ -133,6 +165,7 @@ class UsersDatabase:
                     "userTG": user.userTG,
                     "Enabled": user.xclient.enable if user.xclient else True,
                     "key": "",
+                    "tariff": user.tariff,
                     "keyLimit": None,
                     "PaymentSum": int(user.PaymentSum),
                     "PaymentDate": None,
@@ -140,7 +173,9 @@ class UsersDatabase:
                     "Protocol": str(user.Protocol),
                     "serverType": str(user.serverType),
                     "uuid": user.uuid,
-                    "moneyBalance": 0
+                    "moneyBalance": 0,
+                    "who_invited": user.who_invited,
+                    "referBonus": user.referBonus
                 }
             )
             text = await response.text()
@@ -152,7 +187,7 @@ class UsersDatabase:
                     PD = u["PaymentDate"].split("-")
                     PaymentDate = date(int(PD[0]), int(PD[1]), int(PD[2]))
                 return User(id=user.id, userID=int(u["userID"]), userTG=u["userTG"], PaymentSum=int(u["PaymentSum"]), PaymentDate=PaymentDate, serverName=u["serverName"],
-                            serverType=user.serverType, Protocol=u["Protocol"], moneyBalance=0)
+                            serverType=user.serverType, Protocol=u["Protocol"], moneyBalance=0, tariff=u["tariff"], who_invited=u["who_invited"], referBonus=u["referBonus"])
             else:
                 raise Exception(f"Create request ERROR!\n{text}")
 
@@ -190,6 +225,7 @@ class UsersDatabase:
                     "userTG": user.userTG,
                     "Enabled": user.xclient.enable if user.xclient else True,
                     "key": key,
+                    "tariff": user.tariff,
                     "keyLimit": keyLimit,
                     "PaymentSum": int(user.PaymentSum),
                     "PaymentDate": PaymentDate,
@@ -197,7 +233,9 @@ class UsersDatabase:
                     "Protocol": cls.PROTOCOL_TYPES[user.Protocol],
                     "serverType": cls.SERVER_TYPES[user.serverType],
                     "uuid": user.uuid,
-                    "moneyBalance": user.moneyBalance
+                    "moneyBalance": user.moneyBalance,
+                    "who_invited": user.who_invited,
+                    "referBonus": user.referBonus
                 }
             )
             text = await response.text()
@@ -211,7 +249,8 @@ class UsersDatabase:
                 return User(id=user.id, userID=int(u["userID"]), userTG=u["userTG"], outline_client=user.outline_client,
                             xclient=user.xclient, PaymentSum=int(u["PaymentSum"]), moneyBalance=u["moneyBalance"],
                             PaymentDate=PaymentDate, serverName=u["serverName"], uuid=user.uuid,
-                            serverType=user.serverType, Protocol=u["Protocol"])
+                            serverType=user.serverType, Protocol=u["Protocol"], referBonus=user.referBonus, who_invited=user.who_invited,
+                            tariff=u["tariff"])
             else:
                 raise Exception(f"!!! Update request ERROR!\n{text}")
 

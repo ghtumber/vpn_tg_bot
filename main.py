@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 import time
 from aiogram import Dispatcher, F
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 import threading
@@ -24,17 +24,32 @@ dp = Dispatcher()
 
 
 @dp.message(CommandStart())
-async def cmd_start(message: Message):
+async def cmd_start(message: Message, command: CommandObject):
     user_resp = await UsersDatabase.get_user_by(TG="@" + message.from_user.username)
     if user_resp:
-        await message.answer(REPLY_REGISTRATION, reply_markup=MENU_KEYBOARD_MARKUP)
+        await message.answer(REPLY_REGISTRATION(who_invited=False), reply_markup=MENU_KEYBOARD_MARKUP)
     else:
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="Регистрация", callback_data="user_registration")]
-            ]
-        )
-        await message.answer(REPLY_REGISTRATION, reply_markup=keyboard)
+        if command.args:
+            try:
+                who_invited = int(command.args)
+                keyboard = InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [InlineKeyboardButton(text="Регистрация", callback_data=f"user_registration_{who_invited}")]
+                    ]
+                )
+            except TypeError:
+                print(f"""##### {message.text}\nBad refer.\n#####""")
+                await cmd_start(message, command=CommandObject())
+                return 0
+            who_invited_user = await UsersDatabase.get_user_by(ID=str(who_invited))
+            await message.answer(text=REPLY_REGISTRATION(who_invited=who_invited_user.userTG), reply_markup=keyboard)
+        else:
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="Регистрация", callback_data="user_registration_None")]
+                ]
+            )
+            await message.answer(text=REPLY_REGISTRATION(who_invited=False), reply_markup=keyboard)
 
 
 @dp.callback_query(F.data == "back_to_menu")
@@ -160,7 +175,7 @@ async def menu(message: Message, *args, **kwargs):
                 keyboard = InlineKeyboardMarkup(inline_keyboard=kb_l)
                 await message.answer(text=CLEAN_USER_GREETING_REPLY(user_balance=user.moneyBalance, username=user.userTG), reply_markup=keyboard)
                 return
-            await message.answer(text=USER_GREETING_REPLY(username=user.userTG, paymentSum=user.PaymentSum, paymentDate=user.PaymentDate, serverName=user.serverName, serverLocation=server.location, user_balance=user.moneyBalance), reply_markup=keyboard)
+            await message.answer(text=USER_GREETING_REPLY(username=user.userTG, paymentSum=user.PaymentSum, paymentDate=user.PaymentDate, tariff=user.tariff, serverLocation=server.location, user_balance=user.moneyBalance), reply_markup=keyboard)
         else:
             keyboard = InlineKeyboardMarkup(
                 inline_keyboard=[

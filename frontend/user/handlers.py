@@ -11,13 +11,13 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKe
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 from backend.DonatPAY.donations import DonatPAYHandler
-from backend.models import User, OutlineClient
+from backend.models import User, OutlineClient, XClient
 from backend.xapi.servers import XServer
 from frontend.replys import *
 from backend.outline.managers import SERVERS, OutlineManager
 from backend.database.users import UsersDatabase
 from globals import add_months, MENU_KEYBOARD_MARKUP, use_BASIC_VPN_COST, DEBUG, use_PREFERRED_PAYMENT_SETTINGS, bot, use_XSERVERS, \
-    Available_Tariffs, use_Available_Tariffs
+    Available_Tariffs, use_Available_Tariffs, REFERRAL_PERCENTAGE_QUEUE
 
 router = Router()
 
@@ -74,10 +74,12 @@ async def handle_buy_key(callback: CallbackQuery, state: FSMContext):
 Выбери подходящий вам тариф:
 👉 <b>PROMO</b> подходит для тех, кто редко использует VPN (к примеру для просмотра Youtube)
 - 100 МБ/с канал на сервере (ограничены вашим соединением)
+- подключение до 2 устройств одновременно
 - обычная тех. поддержка
 - возможны подвисания
 👉 <b>MAX</b> подходит для активных пользователей
 - 10 Gbit/s канал на сервере (ограничены вашим соединением)
+- подключение до 5 устройств одновременно
 - приоритетная тех. поддержка
 - стабильный uptime 99%
 """
@@ -167,6 +169,7 @@ async def handle_key_payment_key_type(message: Message, state: FSMContext):
         protocol = data["keyType"]
 
     answer = f"""✅ Отлично. Выбрано:
+⚡ <b>Тариф</b>: {data["tariff"]}
 🌐 <b>Сервер</b> {data['server'].name}
 🏳 <b>Локация</b>: {data['server'].location}
 📡 <b>Протокол подключения</b>: {protocol} 
@@ -199,16 +202,30 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
         await message.delete()
         return 0
     epoch = datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0) - timedelta(seconds=time.timezone)
+
+    # Referral system
+    # if user.who_invited:
+    #     inviter = await UsersDatabase.get_user_by(ID=user.who_invited)
+    #     all_refs = await UsersDatabase.get_all_referrals(ID=inviter.userID)
+    #     if REFERRAL_PERCENTAGE_QUEUE[len(all_refs)] > int(inviter.referBonus):
+    #         i = REFERRAL_PERCENTAGE_QUEUE.index(int(inviter.referBonus))
+    #         print(f"{inviter.userTG} has {inviter.who_invited} now. and position is {i}")
+    #         inviter.referBonus = REFERRAL_PERCENTAGE_QUEUE[i + 1]
+    #         await UsersDatabase.update_user(inviter, {})
+    #         await bot.send_message(chat_id=inviter.userID, text=f"🤝 У вас новый реферал {user.userTG}." + "\n" + f"📈 Новый коэффициент {inviter.referBonus}%!", reply_markup=MENU_KEYBOARD_MARKUP)
+
     user.change("moneyBalance", user.moneyBalance - coast)
     dat = add_months(date.today(), 1)
     user.PaymentDate = dat
+    user.tariff = data["tariff"]
     user.PaymentSum = coast
     user.serverName = data["server"].name
     for inb in data["server"].inbounds:
         if inb.protocol == data["keyType"].lower():
+            limitIp = 2 if data["tariff"] == "PROMO" else 5
             delta = timedelta(hours=15) if time.timezone == 0 else timedelta(hours=20)
             expiryTime = (datetime(dat.year, dat.month, dat.day) - epoch + delta).total_seconds() * 1000
-            client = await inb.add_client(email=message.from_user.username, tgId=message.from_user.id, totalBytes=500*1024**3, expiryTime=expiryTime)
+            client: XClient = await inb.add_client(email=message.from_user.username, tgId=message.from_user.id, totalBytes=500*1024**3, expiryTime=expiryTime, limitIp=limitIp)
             user.xclient = client
             user.Protocol = data["keyType"]
             user.serverType = "XSERVER"
@@ -226,6 +243,7 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
     user: User = await UsersDatabase.update_user(user=user, change={})
     totalGB = user.xclient.totalGB / 1024**3 if user.xclient else user.outline_client.keyLimit / 1000**3
     answer = f"""✅ Готово! Ваши данные для подключения:
+⚡ <b>Тариф</b>: {data["tariff"]}
 🌐 <b>Сервер</b>: {data["server"].name}
 🏳 <b>Локация</b>: {data["server"].location}
 📡 <b>Протокол подключения</b>: {data["keyType"]}
@@ -241,7 +259,7 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
 async def handle_regain_user_access(callback: CallbackQuery):
     await asyncio.sleep(0.5)
     user: User = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
-    if (datetime.fromtimestamp(user.xclient.expiryTime // 1000).date() - date.today()) > timedelta(days=-1):
+    if (datetime.fromtimestamp(user.xclient.expiryTime // 1000).date() - date.today()) <= timedelta(days=0):
         if user.moneyBalance < use_BASIC_VPN_COST():
             await callback.message.answer(text="❌ Недостаточно <b>средств</b> на балансе.", reply_markup=MENU_KEYBOARD_MARKUP)
             kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -263,15 +281,20 @@ async def handle_regain_user_access(callback: CallbackQuery):
     await callback.answer("")
 
 
-@router.callback_query(F.data == "user_registration")
+@router.callback_query(F.data.startswith("user_registration_"))
 async def handle_registration(callback: CallbackQuery):
     await asyncio.sleep(2)
+    who_invited = callback.data.split("_")[2]
+    if who_invited != "None":
+        who_invited = int(who_invited)
+    else:
+        who_invited = None
     u = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
     await callback.answer(text='')
     if not u:
         if callback.from_user.username:
             user = User(userID=callback.from_user.id, userTG=f"@{callback.from_user.username}", PaymentSum=0, PaymentDate=None,
-                        serverName="", serverType="None", moneyBalance=0, Protocol="None")
+                        serverName="", serverType="None", moneyBalance=0, Protocol="None", tariff="None", who_invited=who_invited, referBonus=0)
             u = await UsersDatabase.create_user(user)
             await callback.message.answer(f"✅ Аккаунт создан!\n\n🔓 Доступ к меню открыт!", reply_markup=MENU_KEYBOARD_MARKUP)
         else:

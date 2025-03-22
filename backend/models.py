@@ -70,12 +70,14 @@ class OutlineClient:
 
 
 class User:
-    def __init__(self, userID: int, userTG: str, PaymentSum: int, PaymentDate: date, serverName: str, serverType: str,
-                 Protocol: str, moneyBalance: float, xclient: XClient = None, outline_client: OutlineClient = None, id: int = None, uuid: str = ""):
+    def __init__(self, userID: int, userTG: str, PaymentSum: int, PaymentDate: date, serverName: str, serverType: str, who_invited: str | None, referBonus: int,
+                 Protocol: str, moneyBalance: float, tariff: str, xclient: XClient = None, outline_client: OutlineClient = None, id: int = None, uuid: str = ""):
         self.id = id
         self.uuid = uuid
         self.moneyBalance = moneyBalance
-
+        self.tariff = tariff
+        self.who_invited = who_invited
+        self.referBonus = referBonus
         self.Protocol = Protocol
         self.serverType = serverType
         self.userID = userID
@@ -109,6 +111,10 @@ class User:
                 return
             case "PaymentSum":
                 self.PaymentSum = new_value
+                return
+            case "tariff":
+                print(f"[WARNING] {self.userTG} tariff changed from {self.tariff} to {new_value}")
+                self.tariff = new_value
                 return
             case "PaymentDate":
                 self.PaymentDate = new_value

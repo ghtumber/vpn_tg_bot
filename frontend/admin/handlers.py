@@ -14,6 +14,7 @@ from outline_vpn.outline_vpn import OutlineKey
 from backend.DonatPAY.donations import DonatPAYHandler
 from backend.database.users import UsersDatabase
 from backend.models import User, XClient
+from backend.xapi.servers import Inbound
 from frontend.replys import *
 from frontend.admin.payment_manager_handlers import router as payment_manager_router
 from globals import ADMINS, MENU_KEYBOARD_MARKUP, use_XSERVERS, use_LAST_ALL_XSERVERS_UPDATE, get_servers
@@ -72,6 +73,12 @@ class XserverClientEnabling(StatesGroup):
 class XserverClientDeleting(StatesGroup):
     UUID = State()
     inbound = State()
+    confirmation = State()
+
+class XserverClientExpriryDateUpdating(StatesGroup):
+    UUID = State()
+    inbound = State()
+    days = State()
     confirmation = State()
 
 class UsersListing(StatesGroup):
@@ -247,7 +254,7 @@ async def handle_admin_change_user_balance_confirmation(message: Message, state:
 #----------------------------------------------SERVER DATA UPDATER---------------------------------
 
 @router.callback_query((F.data == "admin_update_all_xserver_shiit") & (F.message.from_user.id in ADMINS))
-async def handle_create_xserver_client(callback: CallbackQuery):
+async def handle_update_all_xserver_shiit(callback: CallbackQuery):
     if (datetime.now() - use_LAST_ALL_XSERVERS_UPDATE()) >= timedelta(minutes=5):
         await callback.answer(text="( ◡̀_◡́)ᕤ Now updating...", show_alert=True)
         await get_servers()
@@ -449,10 +456,11 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
     epoch = datetime.utcfromtimestamp(0)
     expriryDate = epoch + timedelta(milliseconds=xclient.expiryTime)
     exprDate = f"{expriryDate.strftime('%A %d.%m.%Y')}"
+    expriryDateAcc = True if (expriryDate - datetime.now()) >= timedelta(days=-1) else False
     # print(f"{client_traffics=}\n{xclient=}")
     answer = f"""
 ✅ <b>Ключ</b>
-{'🌚 <b>Отключен</b>' if not xclient.enable else '🌝 <b>Включён</b>'}
+{'🌚 <b>Отключен</b>' if not (xclient.enable and expriryDateAcc) else '🌝 <b>Включён</b>'}
 📛 <b>Название</b>: {xclient.email}
 🆔 <b>UUID</b>: {xclient.uuid}
 📡 <b>Протокол</b>: {"ShadowSocks" if not xclient.flow else "VLESS"}
@@ -472,6 +480,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
         inline_keyboard=[
             [InlineKeyboardButton(text=turn_text, callback_data=turn_call),
              InlineKeyboardButton(text="⛔ Удалить", callback_data=f"admin_delClient")],
+            [InlineKeyboardButton(text="🗓 Продлить подписку", callback_data="admin_updateExpriryDate")]
         ]
     )
     await message.answer(text=answer, reply_markup=kb)
@@ -593,6 +602,85 @@ async def handle_xserver_client_deletion(message: Message, state: FSMContext):
     📛 <b>Название</b>: {client["email"]}
     🆔 <b>ID</b>: {data["UUID"]}
     🛰 <b>Сервер</b>: {inbound.server.name}
+    📡 <b>Протокол</b>: {"ShadowSocks" if inbound.protocol == "shadowsocks" else "VLESS"}
+    """
+        await message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)
+        return
+    await message.answer(text="‼ Ошибка!\nState очищен.", reply_markup=MENU_KEYBOARD_MARKUP)
+
+
+@router.callback_query(F.data == "admin_updateExpriryDate")
+async def handle_admin_updateExpriryDate(callback: CallbackQuery, state: FSMContext):
+    await callback.answer("")
+    await state.set_state(XserverClientExpriryDateUpdating.inbound)
+    prev_text = callback.message.text
+    packed = prev_text.split("|api|")[1].split(":")
+    inbound = None
+    for srv in use_XSERVERS():
+        if srv.name == packed[0]:
+            for inb in srv.inbounds:
+                if inb.id == int(packed[1]):
+                    inbound = inb
+    epoch = datetime.utcfromtimestamp(0)
+    xclient: XClient = await srv.get_client_info(identifier=packed[2])
+    expriryDate = epoch + timedelta(milliseconds=xclient.expiryTime)
+
+    await state.update_data(inbound=inbound, UUID=packed[2], expriryDate=expriryDate)
+    await state.set_state(XserverClientExpriryDateUpdating.days)
+    kb = ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="❌ Отмена")]
+    ], resize_keyboard=True)
+    await callback.message.answer(text=f"❓ Как изменяем? (+30/-30)", reply_markup=kb)
+
+@router.message(XserverClientExpriryDateUpdating.days)
+async def handle_admin_updateExpriryDate_new_value(message: Message, state: FSMContext):
+    text = message.text
+    if text[0] != "+" and text[0] != "-":
+        await message.answer(text="❌ Неверный <b>формат</b> изменения.\n\n‼ Просто укажите +30 или -10.")
+        return 0
+    try:
+        text = int(text)
+    except ValueError:
+        await message.answer(text="❌ Неверный <b>формат</b> изменения.\n\n‼ Просто укажите +30 или -10.")
+        return 0
+    data = await state.get_data()
+    new_date: datetime = data["expriryDate"] + timedelta(days=text)
+    new_date_str = f"{new_date.strftime('%A %d.%m.%Y')}"
+    kb = ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="✅ Применяем")],
+        [KeyboardButton(text="❌ Отмена")]
+    ], resize_keyboard=True)
+    answer = f"""
+✅ Следующие изменения:
+⌚ <b>Окончание</b>: {data["expriryDate"].strftime('%A %d.%m.%Y')} -> {new_date_str}
+❔ Применяем изменения
+"""
+    await state.update_data(inbound=data["inbound"], UUID=data["UUID"], expriryDate=data["expriryDate"], new_value=new_date)
+    await state.set_state(XserverClientExpriryDateUpdating.confirmation)
+    await message.answer(text=answer, reply_markup=kb)
+
+@router.message(XserverClientExpriryDateUpdating.confirmation)
+async def handle_xserver_updateExpriryDate_confirmation(message: Message, state: FSMContext):
+    data = await state.get_data()
+    client = None
+    new_date = data["new_value"]
+    inbound: Inbound = data["inbound"]
+    for cl in inbound.settings["clients"]:
+        if cl["id"] == data["UUID"]:
+            client = XClient.create_from_dict(cl)
+    epoch = datetime.utcfromtimestamp(0)
+    delta = timedelta(hours=14) if time.timezone == 0 else timedelta(hours=19)
+    success = await inbound.update_client(client, {
+        "expiryTime": (datetime(new_date.year, new_date.month, new_date.day) - epoch + delta).total_seconds() * 1000})
+    await state.clear()
+    await message.delete()
+    if success:
+        answer = f"""
+    ‼ <b>Клиент изменён</b>
+    📛 <b>Название</b>: {client.email}
+    🆔 <b>ID</b>: {data["UUID"]}
+    🛰 <b>Сервер</b>: {inbound.server.name}
+    🕓 <b>Истекает</b>: {new_date.strftime('%A %d.%m.%Y')}
     📡 <b>Протокол</b>: {"ShadowSocks" if inbound.protocol == "shadowsocks" else "VLESS"}
     """
         await message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)

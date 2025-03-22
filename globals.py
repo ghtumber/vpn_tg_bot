@@ -41,6 +41,8 @@ print(f"[TIMEZONE] {time.tzname} UTC{'+' if time.timezone < 0 else '-'}{-time.ti
 TOKEN = getenv("BOT_TOKEN") if not DEBUG else getenv("DEBUG_BOT_TOKEN")
 ADMINS = [902448626, 1124386913] # 1124386913
 
+REFERRAL_PERCENTAGE_QUEUE = [0, 11, 20, 27, 32, 35, 36, 49, 64, 81, 100]
+
 DONATPAY_API_KEY = get_donat_pay_token()
 DONATION_WIDGET_URL = getenv('DONATION_WIDGET_URL')
 
@@ -100,8 +102,8 @@ class Tariffs:
     MAX: str = "MAX"
 
 DEFAULT_PAYMENT_SETTINGS = {"Tariffs":{
-                                "PROMO": {"server_name": "XServer@94.159.100.60", "keyType": "VLESS", "coast": 85},
-                                "MAX": {"server_name": "XServer@89.39.121.125", "keyType": "VLESS", "coast": 180}
+                                "PROMO": {"server_name": "XServer@94.159.100.60", "keyType": "VLESS", "coast": 85, "limitIp": 2},
+                                "MAX": {"server_name": "XServer@89.39.121.125", "keyType": "VLESS", "coast": 180, "limitIp": 5}
                             },
                             "Available_Tariffs": [Tariffs.MAX, Tariffs.PROMO]}
 
@@ -142,10 +144,11 @@ def use_PREFERRED_PAYMENT_SETTINGS() -> dict:
 MENU_KEYBOARD_MARKUP = ReplyKeyboardMarkup(
         keyboard=[
             [
-                KeyboardButton(text="👤Menu"),
+                KeyboardButton(text="👤 Menu"),
             ],
             [
-                KeyboardButton(text="🚨Тех. поддержка"),
+                KeyboardButton(text="🚨 Тех. поддержка"),
+                # KeyboardButton(text="🔥 Пригласи друзей")
             ],
         ],
         resize_keyboard=True
