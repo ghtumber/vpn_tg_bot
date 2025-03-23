@@ -81,6 +81,12 @@ class XserverClientExpriryDateUpdating(StatesGroup):
     days = State()
     confirmation = State()
 
+class UserExpriryDateUpdating(StatesGroup):
+    user = State()
+    inbound = State()
+    days = State()
+    confirmation = State()
+
 class UsersListing(StatesGroup):
     userID = State()
 
@@ -188,10 +194,92 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
 """
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="💸 Изменить баланс", callback_data=f"admin_change_user_balance"),]
+            [InlineKeyboardButton(text="💸 Изменить баланс", callback_data=f"admin_change_user_balance"),],
+            [InlineKeyboardButton(text="🗓 Продлить подписку", callback_data="admin_updateUserExpriryDate")]
         ]
     )
     await message.answer(text=answer, reply_markup=kb)
+
+
+@router.callback_query((F.data == "admin_updateUserExpriryDate") & (F.message.from_user.id in ADMINS))
+async def handle_admin_updateUserExpriryDate(callback: CallbackQuery, state: FSMContext):
+    prev_text = callback.message.text
+    userID = prev_text.split("|api|")[1]
+    await callback.answer(f"UserID: {userID}")
+    user = await UsersDatabase.get_user_by(ID=userID)
+    inbound = None
+    for srv in use_XSERVERS():
+        if srv.name == user.serverName:
+            for inb in srv.inbounds:
+                if inb.protocol.lower() == user.Protocol.lower():
+                    inbound = inb
+    await state.update_data(user=user, inbound=inbound)
+    await state.set_state(UserExpriryDateUpdating.days)
+    answer = f"""
+✅ Следующие изменения:
+⌚ <b>Payment Date</b>: {user.PaymentDate.strftime('%A %d.%m.%Y')}
+❔ На сколько изменяем? (ex. +30)
+"""
+    await callback.message.answer(text=answer, reply_markup=CANCEL_KB)
+
+@router.message(UserExpriryDateUpdating.days)
+async def handle_admin_updateUserExpriryDate_new_value(message: Message, state: FSMContext):
+    text = message.text
+    if text[0] != "+" and text[0] != "-":
+        await message.answer(text="❌ Неверный <b>формат</b> изменения.\n\n‼ Просто укажите +100 или -100.")
+        return 0
+    try:
+        text = int(text)
+    except ValueError:
+        await message.answer(text="❌ Неверный <b>формат</b> изменения.\n\n‼ Просто укажите +100 или -100.")
+        return 0
+    data = await state.get_data()
+    new_date = data["user"].PaymentDate + timedelta(days=text)
+    kb = ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="✅ Применяем")],
+        [KeyboardButton(text="❌ Отмена")]
+    ], resize_keyboard=True)
+    answer = f"""
+✅ Следующие изменения:
+🔗 <b>TG</b>: {data["user"].userTG}
+⌚ <b>Оплата</b>: {data["user"].PaymentDate.strftime('%A %d.%m.%Y')}руб. -> {new_date.strftime('%A %d.%m.%Y')}руб.
+❔ Применяем изменения
+"""
+    await state.update_data(user=data["user"], new_value=new_date, inbound=data["inbound"])
+    await state.set_state(UserExpriryDateUpdating.confirmation)
+    await message.answer(text=answer, reply_markup=kb)
+
+
+@router.message(UserExpriryDateUpdating.confirmation)
+async def handle_xserver_updateUserExpriryDate_confirmation(message: Message, state: FSMContext):
+    data = await state.get_data()
+    client = None
+    new_date = data["new_value"]
+    inbound: Inbound = data["inbound"]
+    for cl in inbound.settings["clients"]:
+        if cl["id"] == data["user"].uuid:
+            client = XClient.create_from_dict(cl)
+    if client:
+        epoch = datetime.utcfromtimestamp(0)
+        delta = timedelta(hours=14) if time.timezone == 0 else timedelta(hours=19)
+        success = await inbound.update_client(client, {
+            "expiryTime": (datetime(new_date.year, new_date.month, new_date.day) - epoch + delta).total_seconds() * 1000})
+        data["user"].PaymentDate = datetime(new_date.year, new_date.month, new_date.day)
+        user: User = await UsersDatabase.update_user(user=data["user"], change={})
+        await state.clear()
+        await message.delete()
+        if success:
+            answer = f"""
+✅ <b>Клиент изменён</b>
+👤 <b>Имя</b>: {client.email}
+🆔 <b>UUID</b>: {user.uuid}
+🛰 <b>Сервер</b>: {inbound.server.name}
+🕓 <b>Истекает</b>: {user.PaymentDate.strftime('%A %d.%m.%Y')}
+📡 <b>Протокол</b>: {"ShadowSocks" if inbound.protocol == "shadowsocks" else "VLESS"}
+"""
+            await message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)
+            return
+    await message.answer(text="‼ Ошибка!\nState очищен.\n" + f"{client=}", reply_markup=MENU_KEYBOARD_MARKUP)
 
 
 @router.callback_query((F.data == "admin_change_user_balance") & (F.message.from_user.id in ADMINS))
