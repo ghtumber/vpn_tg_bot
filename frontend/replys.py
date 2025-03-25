@@ -43,6 +43,18 @@ ADMIN_PAYMENTS_MANAGER_REPLY = lambda default_server, default_protocol, default_
 🟡 <b>Отключено тарифов</b>: {len(All_Tariffs) - len(Available_Tariffs)}
 """
 
+INSTRUCTIONS_TEXT = """
+🔗 Как подключиться к VPN?
+
+Выберите инструкцию для вашей платформы и настройте VPN за пару минут:
+
+📱 Android | iOS
+💻 Windows (c/без раздельного туннелирования) | MacOS
+
+Если возникли вопросы — обратитесь в поддержку. 🚀
+"""
+
+
 USER_GREETING_REPLY = lambda username, paymentSum, paymentDate, tariff, serverLocation, user_balance: f"""
 ✨ <b>Привет</b> {username}
 

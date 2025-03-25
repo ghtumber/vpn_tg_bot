@@ -96,14 +96,22 @@ class UserBalanceUpdating(StatesGroup):
     confirmation = State()
 
 
-@router.message(F.text == "❌ Отмена")
+#@router.message(F.text == "❌ Отмена")
 async def handle_cancel(message: Message):
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="Да", callback_data="menu"), InlineKeyboardButton(text="Нет", callback_data="cancel_of_cancel")],
         ]
     )
-    await message.answer("Отмена?", reply_markup=kb)
+    fake_callback = CallbackQuery(
+        id="12345",  # Любой ID, не важно
+        from_user=message.from_user,
+        message=message,
+        data="menu",
+        chat_instance=""
+    )
+    await router.callback_query.handlers.notify(fake_callback)
+    # await message.answer("Отмена?", reply_markup=kb)
 
 
 @router.callback_query((F.data == "admin_test_donatPAY") & (F.message.from_user.id in ADMINS))
@@ -213,6 +221,8 @@ async def handle_admin_updateUserExpriryDate(callback: CallbackQuery, state: FSM
             for inb in srv.inbounds:
                 if inb.protocol.lower() == user.Protocol.lower():
                     inbound = inb
+                    break
+            break
     await state.update_data(user=user, inbound=inbound)
     await state.set_state(UserExpriryDateUpdating.days)
     answer = f"""
@@ -709,6 +719,8 @@ async def handle_admin_updateExpriryDate(callback: CallbackQuery, state: FSMCont
             for inb in srv.inbounds:
                 if inb.id == int(packed[1]):
                     inbound = inb
+                    break
+            break
     epoch = datetime.utcfromtimestamp(0)
     xclient: XClient = await srv.get_client_info(identifier=packed[2])
     expriryDate = epoch + timedelta(milliseconds=xclient.expiryTime)

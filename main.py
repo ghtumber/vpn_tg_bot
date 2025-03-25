@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 import time
 from aiogram import Dispatcher, F
-from aiogram.filters import CommandStart, CommandObject
+from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 import threading
@@ -61,13 +61,14 @@ async def back_to_menu(callback: CallbackQuery):
         await menu(callback.message, callback=callback)
     await callback.message.delete()
 
-@dp.callback_query(F.data == "to_menu")
-async def open_menu(callback: CallbackQuery):
-    await callback.answer("")
-    if callback.from_user.id in ADMINS:
-        await admin_menu(callback.message)
+@dp.message(F.text == "❌ Отмена")
+async def open_menu(message: Message, state: FSMContext):
+    await state.clear()
+    if message.from_user.id in ADMINS:
+        await admin_menu(message)
     else:
-        await menu(callback.message, callback=callback)
+        load_message = await message.answer("🔃 Загрузка~", reply_markup=MENU_KEYBOARD_MARKUP)
+        await menu(message)
 
 @dp.callback_query(F.data == "menu")
 async def to_menu(callback: CallbackQuery, state: FSMContext):
@@ -80,6 +81,7 @@ async def to_menu(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer("🔃 Загрузка~", reply_markup=MENU_KEYBOARD_MARKUP)
         await menu(callback.message, callback=callback)
     await callback.message.delete()
+
 
 @dp.message(F.text.contains("Тех. поддержка"))
 async def TA(message: Message, *args, **kwargs):
@@ -135,7 +137,7 @@ async def menu(message: Message, *args, **kwargs):
                         keyboard = InlineKeyboardMarkup(inline_keyboard=[
                             [InlineKeyboardButton(text="📊 Использование", callback_data="xclient_vpn_usage"), InlineKeyboardButton(text="🔑 Ключ", callback_data="view_user_key")],
                             [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
-                            [InlineKeyboardButton(text="📘 Инструкции", callback_data=f"get_{user.Protocol}_instructions")]
+                            [InlineKeyboardButton(text="📘 Инструкции", callback_data=f"get_instructions")]
                         ])
                         server = [s for s in use_XSERVERS() if s.name == user.serverName][0]
                     else:
@@ -179,10 +181,10 @@ async def menu(message: Message, *args, **kwargs):
         else:
             keyboard = InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [InlineKeyboardButton(text="Регистрация", callback_data="user_registration")]
+                    [InlineKeyboardButton(text="Регистрация", callback_data="user_registration_None")]
                 ]
             )
-            await message.answer(REPLY_REGISTRATION, reply_markup=keyboard)
+            await message.answer(REPLY_REGISTRATION(who_invited=False), reply_markup=keyboard)
 
 @dp.message(F.text == "User")
 async def with_puree(message: Message):

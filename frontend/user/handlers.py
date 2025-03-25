@@ -21,13 +21,14 @@ from globals import add_months, MENU_KEYBOARD_MARKUP, use_BASIC_VPN_COST, DEBUG,
 
 router = Router()
 
-@router.message(F.text == "❌ Отмена")
+#@router.message(F.text == "❌ Отмена")
 async def handle_user_cancel(message: Message):
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="Да", callback_data="menu"), InlineKeyboardButton(text="Нет", callback_data="cancel_of_cancel")],
         ]
     )
+    print("Nihuya HERE")
     await message.answer("Отмена?", reply_markup=kb)
 
 
@@ -280,6 +281,17 @@ async def handle_regain_user_access(callback: CallbackQuery):
         await callback.message.answer(text=PAYMENT_SUCCESS(user), reply_markup=MENU_KEYBOARD_MARKUP)
     await callback.answer("")
 
+@router.callback_query(F.data == "get_instructions")
+async def handle_get_instructions(callback: CallbackQuery):
+    await callback.answer("")
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📱Android", url="https://telegra.ph/Nastrojka-Proxym1ty-na-android-03-16"), InlineKeyboardButton(text="🍏IOS", url="https://telegra.ph/Nastrojka-Proxym1ty-na-iPhone-03-16")],
+            [InlineKeyboardButton(text="💻Win(easy)", url="https://telegra.ph/Nastrojka-Proxym1ty-na-pk-dlya-debilov-ne-gejmerov-03-16"), InlineKeyboardButton(text="🖥️Win(pro)", url="https://telegra.ph/Nastrojka-Proxym1ty-VPN-na-pk-i-noutbuki-01-29")],
+            [InlineKeyboardButton(text="↩ Назад", callback_data="back_to_menu")]
+        ]
+    )
+    await callback.message.edit_text(text=INSTRUCTIONS_TEXT, reply_markup=kb)
 
 @router.callback_query(F.data.startswith("user_registration_"))
 async def handle_registration(callback: CallbackQuery):
