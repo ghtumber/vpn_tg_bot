@@ -80,7 +80,6 @@ async def listen_to_centrifugo(update_global_next_ws_update, restart_ws_thread=N
 
     task = asyncio.current_task()
 
-
     while not SHUTDOWN:
         try:
             async with websockets.connect(uri) as websocket:

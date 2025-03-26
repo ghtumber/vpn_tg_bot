@@ -17,7 +17,7 @@ from backend.xapi.servers import GET_XSERVERS
 load_dotenv()
 
 """DEBUG MODE MUST BE DISABLED ON PROD"""
-DEBUG = True
+DEBUG = False
 """###################################"""
 
 

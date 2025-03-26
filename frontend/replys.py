@@ -114,7 +114,7 @@ TECH_ASSISTANCE_RESPONSE = lambda user: f"""
 Если у вас возникли вопросы или проблемы, наша команда готова помочь!
 
 📩 Контакты для связи:
-🔹 Чат поддержки: @quatrocopt
+🔹 Чат поддержки: {'{TA_contact}'}
 
 Мы всегда готовы решить любые вопросы. 🚀
 """
@@ -179,6 +179,7 @@ NEW_DONATION_ADMIN_REPLY = lambda name, comment, sum, user, success, error: f"""
 {f'''User DB:
 🔗TG: {user.userTG}
 🌐 Svr name: {user.serverName}
+🧾 Tariff: {user.tariff}
 💰New balance: {user.moneyBalance}''' if success else '⛔ User не найден'}"""
 
 

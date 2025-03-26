@@ -61,6 +61,17 @@ async def back_to_menu(callback: CallbackQuery):
         await menu(callback.message, callback=callback)
     await callback.message.delete()
 
+@dp.callback_query(F.data == "to_menu")
+async def call_to_menu(callback: CallbackQuery, state: FSMContext):
+    if state:
+        await state.clear()
+    await callback.answer(text="")
+    if callback.from_user.id in ADMINS:
+        await admin_menu(callback.message)
+    else:
+        await callback.message.answer("🔃 Загрузка~", reply_markup=MENU_KEYBOARD_MARKUP)
+        await menu(callback.message, callback=callback)
+
 @dp.message(F.text == "❌ Отмена")
 async def open_menu(message: Message, state: FSMContext):
     await state.clear()
