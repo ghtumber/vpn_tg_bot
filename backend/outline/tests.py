@@ -4,8 +4,8 @@ from dotenv import load_dotenv
 from os import getenv
 load_dotenv()
 
-OUTLINE_API_URL = getenv('API_URL_1')
-OUTLINE_CERT_SHA256 = getenv('CERT_SHA_1')
+OUTLINE_API_URL = getenv('API_URL_2')
+OUTLINE_CERT_SHA256 = getenv('CERT_SHA_2')
 
 
 class OutlineManager:
@@ -41,5 +41,5 @@ class OutlineManager:
         return cls.client.add_data_limit(key_id, data_limit_bytes)
 
 
-k = OutlineManager.create_new_key(name="LOL_test", data_limit_gb=10.5)
+k = OutlineManager.get_key_info("25")
 print(k)
