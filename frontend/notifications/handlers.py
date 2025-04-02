@@ -7,7 +7,6 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from backend.DonatPAY.donations import DonatPAYHandler
 from backend.xapi.servers import XServer, Inbound
 from frontend.admin.handlers import CANCEL_KB, handle_cancel
 from backend.models import User, XClient
@@ -70,7 +69,7 @@ async def payment_system():
                         await inbound.update_client(user.xclient, {"enable": False})
                         await UsersDatabase.update_user(user)
                         kb = InlineKeyboardMarkup(inline_keyboard=[
-                            [InlineKeyboardButton(text="💰 Пополнить баланс", url=DonatPAYHandler.form_link(user=user))]
+                            [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")]
                         ])
                         await bot.send_message(chat_id=user.userID, text=NO_MONEY_LEFT(user), reply_markup=kb)
                         continue
@@ -109,7 +108,7 @@ async def check_period():
                     else:
                         if user.moneyBalance < user.PaymentSum:
                             kb = InlineKeyboardMarkup(inline_keyboard=[
-                                [InlineKeyboardButton(text="💳 Пополнить баланс", url=DonatPAYHandler.form_link(user=user))]
+                                [InlineKeyboardButton(text="💳 Пополнить баланс", callback_data="topup_user_balance")]
                             ])
                             await bot.send_message(chat_id=user.userID, text=PERIOD_ENDED(user), reply_markup=kb)
                             continue

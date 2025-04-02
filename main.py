@@ -7,14 +7,12 @@ from aiogram import Dispatcher, F
 from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
-import threading
-from threading import Thread
-from backend.DonatPAY.centrifugo_websocket import listen_to_centrifugo
 from frontend.replys import *
 from backend.database.users import UsersDatabase
 from backend.models import User
 from frontend.user.handlers import router as user_router
 from frontend.admin.handlers import router as admin_router
+from backend.Payments.stars import router as stars_router
 from frontend.notifications.handlers import router as notifications_router
 from backend.outline.managers import SERVERS
 from globals import *
@@ -126,7 +124,8 @@ async def admin_menu(message: Message):
         online_users = await server.get_online_users()
         online_users_count += len(online_users)
 
-    await message.answer(ADMIN_GREETING_REPLY(username=f"@{message.from_user.username}", online_users_count=online_users_count, next_ws_update=NEXT_WS_UPDATE, servers_count=len(use_XSERVERS())), reply_markup=MENU_KEYBOARD_MARKUP)
+    await message.answer(ADMIN_GREETING_REPLY(username=f"@{message.from_user.username}", online_users_count=online_users_count,
+                                              servers_count=len(use_XSERVERS())), reply_markup=MENU_KEYBOARD_MARKUP)
     await message.answer("⚡ Вот что можно сделать сейчас.", reply_markup=keyboard)
 
 
@@ -209,22 +208,6 @@ def get_utc_time(time_to_convert: datetime) -> datetime:
     tz = time.timezone
     return time_to_convert + datetime.timedelta(seconds=tz)
 
-def update_global_next_ws_update(new):
-    global NEXT_WS_UPDATE
-    NEXT_WS_UPDATE = get_utc_time(new)
-
-async def restart_ws_thread(task: asyncio.Future):
-    print(f"[TESTING FUNC restart_ws_thread()] Sleep for 20 secs now")
-    await asyncio.sleep(20)
-    was = task.cancel()
-    print(f"[TESTING FUNC restart_ws_thread()] TASK CANCELED? {was=}")
-
-def between_callback(callback_func, restart_ws_thread):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(listen_to_centrifugo(callback_func))
-    # loop.close()
-
 async def main():
     await get_servers()
     period_checker_scheduler.start()
@@ -236,12 +219,10 @@ if __name__ == "__main__":
     dp.include_router(user_router)
     dp.include_router(admin_router)
     dp.include_router(notifications_router)
-    centrifugo_thread = Thread(target=between_callback, args=[update_global_next_ws_update, restart_ws_thread], name="Centrifugo listener")
+    dp.include_router(stars_router)
     try:
-        centrifugo_thread.start()
         asyncio.run(main())
     except KeyboardInterrupt:
         SHUTDOWN = True
         print("Shutting down...")
-        centrifugo_thread.join()
         # sys.exit()

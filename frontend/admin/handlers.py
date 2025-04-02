@@ -11,13 +11,12 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKe
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from outline_vpn.outline_vpn import OutlineKey
 
-from backend.DonatPAY.donations import DonatPAYHandler
 from backend.database.users import UsersDatabase
 from backend.models import User, XClient
 from backend.xapi.servers import Inbound
 from frontend.replys import *
 from frontend.admin.payment_manager_handlers import router as payment_manager_router
-from globals import ADMINS, MENU_KEYBOARD_MARKUP, use_XSERVERS, use_LAST_ALL_XSERVERS_UPDATE, get_servers
+from globals import ADMINS, MENU_KEYBOARD_MARKUP, use_XSERVERS, use_LAST_ALL_XSERVERS_UPDATE, get_servers, use_PREFERRED_PAYMENT_SETTINGS
 from backend.outline.managers import SERVERS
 
 router = Router()
@@ -114,11 +113,6 @@ async def handle_cancel(message: Message):
     # await message.answer("Отмена?", reply_markup=kb)
 
 
-@router.callback_query((F.data == "admin_test_donatPAY") & (F.message.from_user.id in ADMINS))
-async def handle_test_donatPAY(callback: CallbackQuery):
-    await callback.answer("")
-    await DonatPAYHandler.get_notifications(message=callback.message)
-
 
 #-----------------------------------------------UserDB-------------------------------------------
 @router.callback_query((F.data == "admin_get_user_info") & (F.message.from_user.id in ADMINS))
@@ -193,7 +187,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
     user = await UsersDatabase.get_user_by(ID=data["userID"])
     answer = f"""
 🔗 <b>TG</b>: {user.userTG}
-💰 <b>Balance</b>: {user.moneyBalance}руб.
+💰 <b>Balance</b>: {user.moneyBalance}🌟XTR
 🆔 <b>UUID</b>: {user.uuid}
 📡 <b>Протокол</b>: {user.Protocol}
 🛰 <b>Сервер</b>: {user.serverType} -> {user.serverName}
@@ -252,7 +246,7 @@ async def handle_admin_updateUserExpriryDate_new_value(message: Message, state: 
     answer = f"""
 ✅ Следующие изменения:
 🔗 <b>TG</b>: {data["user"].userTG}
-⌚ <b>Оплата</b>: {data["user"].PaymentDate.strftime('%A %d.%m.%Y')}руб. -> {new_date.strftime('%A %d.%m.%Y')}руб.
+⌚ <b>Оплата</b>: {data["user"].PaymentDate.strftime('%A %d.%m.%Y')} -> {new_date.strftime('%A %d.%m.%Y')}
 ❔ Применяем изменения
 """
     await state.update_data(user=data["user"], new_value=new_date, inbound=data["inbound"])
@@ -302,7 +296,8 @@ async def handle_admin_change_user_balance(callback: CallbackQuery, state: FSMCo
     await state.set_state(UserBalanceUpdating.new_value)
     answer = f"""
 🔗 <b>TG</b>: {user.userTG}
-💰 <b>Balance</b>: {user.moneyBalance}руб.
+💰 <b>Balance</b>: {user.moneyBalance}🌟XTR
+📈 <b>Курс 🌟XTR</b>: {use_PREFERRED_PAYMENT_SETTINGS()["XTR_exchange_rate"]}
 ❔ На сколько изменяем баланс? (ex. +100)
 """
     await callback.message.answer(text=answer, reply_markup=CANCEL_KB)
@@ -327,7 +322,7 @@ async def handle_admin_change_user_balance_new_value(message: Message, state: FS
     answer = f"""
 ✅ Следующие изменения:
 🔗 <b>TG</b>: {data["user"].userTG}
-💰 <b>Balance</b>: {data["user"].moneyBalance}руб. -> {data["user"].moneyBalance + text}руб.
+💰 <b>Balance</b>: {data["user"].moneyBalance}🌟XTR -> {data["user"].moneyBalance + text}🌟XTR
 ❔ Применяем изменения
 """
     await state.update_data(user=data["user"], new_value=text)

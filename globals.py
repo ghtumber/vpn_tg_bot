@@ -17,17 +17,9 @@ from backend.xapi.servers import GET_XSERVERS
 load_dotenv()
 
 """DEBUG MODE MUST BE DISABLED ON PROD"""
-DEBUG = False
+DEBUG = True
 """###################################"""
 
-
-
-def get_donat_pay_token() -> str:
-    DONATPAY_API_KEY = getenv('DONATPAY_API_KEY')
-    if DONATPAY_API_KEY:
-        return DONATPAY_API_KEY
-    asyncio.get_event_loop().stop()
-    raise Exception(f"[GLOBAL EXCEPTION] NO DonatPAY TOKEN {DONATPAY_API_KEY=}")
 
 def add_months(sourcedate, months):
     month = sourcedate.month - 1 + months
@@ -39,12 +31,11 @@ def add_months(sourcedate, months):
 print(f"[TIMEZONE] {time.tzname} UTC{'+' if time.timezone < 0 else '-'}{-time.timezone // 3600}")
 
 TOKEN = getenv("BOT_TOKEN") if not DEBUG else getenv("DEBUG_BOT_TOKEN")
-ADMINS = [902448626, 1124386913] # 1124386913
+ADMINS = [1124386913, 5475897905] # 902448626
 
 REFERRAL_PERCENTAGE_QUEUE = [0, 11, 20, 27, 32, 35, 36, 49, 64, 81, 100]
 
-DONATPAY_API_KEY = get_donat_pay_token()
-DONATION_WIDGET_URL = getenv('DONATION_WIDGET_URL')
+
 
 OUTLINE_API_URL_1 = getenv('API_URL_1')
 OUTLINE_CERT_SHA256_1 = getenv('CERT_SHA_1')
@@ -74,7 +65,6 @@ DB_TEST_PROTOCOL_TYPES = {"ShadowSocks": 2447417, "VLESS": 2447418, "None": 2447
 
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
-NEXT_WS_UPDATE = datetime.datetime.now()
 LAST_ALL_XSERVERS_UPDATE = datetime.datetime.now()
 SHUTDOWN = False
 
@@ -102,10 +92,11 @@ class Tariffs:
     MAX: str = "MAX"
 
 DEFAULT_PAYMENT_SETTINGS = {"Tariffs":{
-                                "PROMO": {"server_name": "XServer@94.159.100.60", "keyType": "VLESS", "coast": 85, "limitIp": 2},
-                                "MAX": {"server_name": "XServer@89.39.121.125", "keyType": "VLESS", "coast": 180, "limitIp": 5}
+                                "PROMO": {"server_name": "XServer@94.159.100.60", "keyType": "VLESS", "coast": 55, "limitIp": 2},
+                                "MAX": {"server_name": "XServer@89.39.121.125", "keyType": "VLESS", "coast": 125, "limitIp": 5}
                             },
-                            "Available_Tariffs": [Tariffs.MAX, Tariffs.PROMO]}
+                            "Available_Tariffs": [Tariffs.MAX, Tariffs.PROMO],
+                            "XTR_exchange_rate": 1.82}
 
 def get_preferred_payment_settings():
     try:
@@ -128,13 +119,9 @@ def edit_preferred_payment_settings(new):
 PREFERRED_PAYMENT_SETTINGS = get_preferred_payment_settings()
 All_Tariffs = [Tariffs.MAX, Tariffs.PROMO]
 Available_Tariffs = PREFERRED_PAYMENT_SETTINGS["Available_Tariffs"]
-BASIC_VPN_COST = 100
 
 def use_Available_Tariffs() -> list:
     return Available_Tariffs
-
-def use_BASIC_VPN_COST() -> int:
-    return BASIC_VPN_COST
 
 def use_PREFERRED_PAYMENT_SETTINGS() -> dict:
     return PREFERRED_PAYMENT_SETTINGS

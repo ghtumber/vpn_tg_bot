@@ -10,14 +10,14 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
-from backend.DonatPAY.donations import DonatPAYHandler
+from backend.Payments.stars import XTRPayments
 from backend.models import User, OutlineClient, XClient
 from backend.xapi.servers import XServer
 from frontend.replys import *
 from backend.outline.managers import SERVERS, OutlineManager
 from backend.database.users import UsersDatabase
-from globals import add_months, MENU_KEYBOARD_MARKUP, use_BASIC_VPN_COST, DEBUG, use_PREFERRED_PAYMENT_SETTINGS, bot, use_XSERVERS, \
-    Available_Tariffs, use_Available_Tariffs, REFERRAL_PERCENTAGE_QUEUE
+from globals import add_months, MENU_KEYBOARD_MARKUP, use_PREFERRED_PAYMENT_SETTINGS, use_XSERVERS, \
+    Available_Tariffs, use_Available_Tariffs
 
 router = Router()
 
@@ -50,13 +50,21 @@ class KeyPayment(StatesGroup):
 async def handle_topup_user_balance(callback: CallbackQuery):
     await callback.answer("")
     user = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
+    kb = []
+    for i in use_Available_Tariffs():
+        summ = int(use_PREFERRED_PAYMENT_SETTINGS()['Tariffs'][i]['coast'])
+        kb.append([InlineKeyboardButton(text=f"🌟 Пополнить на {summ}", callback_data=f"get_topup_invoice_{summ}")])
     keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="💳 Оплата", url=DonatPAYHandler.form_link(user=user))]
-        ]
+        inline_keyboard=kb
     )
-    await callback.message.answer(f"💰 Пополнение баланса\n➖➖➖➖➖➖➖➖\n❓ Нажми на кнопку ниже и измени сумму пожертвования\n❗ Не меняй комментарий и имя\n✨ Бот пополнит твой баланс в течении 5-10 минут", reply_markup=keyboard)
+    await callback.message.answer("💰 Пополнение баланса\n➖➖➖➖➖➖➖➖\n🌟 Пополнить баланс можно звёздами телеграм!\n💳 Оплата карта будет доступна в будущем...", reply_markup=keyboard)
 
+@router.callback_query(F.data.startswith("get_topup_invoice_"))
+async def handle_topup_user_balance(callback: CallbackQuery):
+    await callback.answer("")
+    summ = int(callback.data.split("_")[3])
+    await XTRPayments.send_invoice(message=callback.message, title=f"Пополнение баланса на {summ} XTR",
+                                   description="Пополнение баланса с помощью 🌟XTR", payload="stars_topup", price=summ)
 
 #----------------------------------------Key Payment----------------------------------------------
 @router.callback_query(F.data == "buy_key")
@@ -175,7 +183,7 @@ async def handle_key_payment_key_type(message: Message, state: FSMContext):
 🏳 <b>Локация</b>: {data['server'].location}
 📡 <b>Протокол подключения</b>: {protocol} 
 ⚡ <b>Скорость сети на сервере</b>: {'10 Gbit/s' if data["tariff"] == "MAX" else '100 МБ/c'}
-💸 <b>Стоимость</b>: {use_PREFERRED_PAYMENT_SETTINGS()['Tariffs'][data['tariff']]['coast']}р/мес
+💸 <b>Стоимость</b>: {use_PREFERRED_PAYMENT_SETTINGS()['Tariffs'][data['tariff']]['coast']}🌟XTR/мес
 🧾 Для продолжения <b>подтвердите</b> оплату
 """
     await state.set_state(KeyPayment.confirmation)
@@ -196,7 +204,7 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
     if user.moneyBalance < coast:
         await message.answer(text="❌ Недостаточно <b>средств</b> на балансе.", reply_markup=MENU_KEYBOARD_MARKUP)
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💳 Пополнить баланс", url=DonatPAYHandler.form_link(user=user))]
+            [InlineKeyboardButton(text="💳 Пополнить баланс", callback_data="topup_user_balance")]
         ])
         await message.answer(text="💰 <b>Пополните</b> баланс.", reply_markup=kb)
         await state.clear()
@@ -261,10 +269,10 @@ async def handle_regain_user_access(callback: CallbackQuery):
     await asyncio.sleep(0.5)
     user: User = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
     if (datetime.fromtimestamp(user.xclient.expiryTime // 1000).date() - date.today()) <= timedelta(days=0):
-        if user.moneyBalance < use_BASIC_VPN_COST():
+        if user.moneyBalance < user.PaymentSum:
             await callback.message.answer(text="❌ Недостаточно <b>средств</b> на балансе.", reply_markup=MENU_KEYBOARD_MARKUP)
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="💳 Пополнить баланс", url=DonatPAYHandler.form_link(user=user))]
+                [InlineKeyboardButton(text="💳 Пополнить баланс", callback_data="topup_user_balance")]
             ])
             await callback.message.answer(text="💰 <b>Пополните</b> баланс.", reply_markup=kb)
             return 0

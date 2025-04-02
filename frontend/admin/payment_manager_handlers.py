@@ -6,9 +6,11 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 
+from backend.database.users import UsersDatabase
+from backend.models import User
 from frontend.replys import ADMIN_PAYMENTS_MANAGER_REPLY
-from globals import ADMINS, use_BASIC_VPN_COST, use_PREFERRED_PAYMENT_SETTINGS, MENU_KEYBOARD_MARKUP, \
-    edit_preferred_payment_settings, DONATION_WIDGET_URL, use_XSERVERS, use_Available_Tariffs, All_Tariffs
+from globals import ADMINS, use_PREFERRED_PAYMENT_SETTINGS, MENU_KEYBOARD_MARKUP, \
+    edit_preferred_payment_settings, use_XSERVERS, use_Available_Tariffs, All_Tariffs
 
 router = Router()
 
@@ -35,6 +37,17 @@ class CoastChangingState(StatesGroup):
     coast = State()
     confirmation = State()
 
+class XTRRateChangingState(StatesGroup):
+    callback = State()
+    coast = State()
+    confirmation = State()
+
+class XTRRefundCreationState(StatesGroup):
+    callback = State()
+    userID = State()
+    charge_id = State()
+    confirmation = State()
+
 class TariffManagingState(StatesGroup):
     callback = State()
     func = State()
@@ -50,19 +63,22 @@ async def handle_admin_manage_payment_defaults(callback: CallbackQuery):
     await callback.answer("")
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="👀 Виджет с донатами", url=DONATION_WIDGET_URL)],
             [InlineKeyboardButton(text="🌐 Изменить сервер", callback_data="admin_change_payment_defaults_server")],
             [InlineKeyboardButton(text="⛓ Изменить протокол", callback_data="admin_change_payment_defaults_protocol")],
             [InlineKeyboardButton(text="🏧 Изменить цену", callback_data="admin_change_payment_defaults_coast")],
             [InlineKeyboardButton(text="➰ Tariffs Manager", callback_data="admin_change_payment_defaults_tariffs")],
+            [InlineKeyboardButton(text="🌟 Курс звёздочек", callback_data="admin_change_payment_defaults_xtr_rate")],
+            [InlineKeyboardButton(text="🌟 Сделать возврат", callback_data="admin_create_xtr_refund")],
         ]
     )
     tars = use_PREFERRED_PAYMENT_SETTINGS()["Tariffs"]
+    xtr_ex_rate = use_PREFERRED_PAYMENT_SETTINGS()["XTR_exchange_rate"]
     servers = ", ".join([tars[t_k]["server_name"] for t_k in tars.keys()])
     protocols = ", ".join([tars[t_k]["keyType"] for t_k in tars.keys()])
     coasts = ", ".join([str(tars[t_k]["coast"]) for t_k in tars.keys()])
-    await callback.message.answer(ADMIN_PAYMENTS_MANAGER_REPLY(default_coast=coasts, default_server=servers, Available_Tariffs=use_Available_Tariffs(),
-                                                               default_protocol=protocols), reply_markup=keyboard)
+    await callback.message.answer(ADMIN_PAYMENTS_MANAGER_REPLY(default_coast=coasts, xtr_rate=xtr_ex_rate, default_server=servers,
+                                                               Available_Tariffs=use_Available_Tariffs(), default_protocol=protocols),
+                                  reply_markup=keyboard)
 
 
 
@@ -140,7 +156,7 @@ async def handle_admin_change_payment_defaults_tariffs_confirmation(callback: Ca
         answer = f"✅ Тариф {data['to_edit']} активирован!"
     await state.clear()
     await callback.message.edit_text(text=answer)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(0.2)
     await handle_admin_manage_payment_defaults(callback=data["callback"])
 
 
@@ -204,7 +220,7 @@ async def handle_admin_change_payment_defaults_server_confirmation(message: Mess
     edit_preferred_payment_settings(new=new)
     await state.clear()
     await message.answer(text="✅ Изменения сохранены", reply_markup=MENU_KEYBOARD_MARKUP)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(0.2)
     await handle_admin_manage_payment_defaults(callback=data["callback"])
 
 
@@ -267,12 +283,94 @@ async def handle_admin_change_payment_defaults_protocol_confirmation(message: Me
     edit_preferred_payment_settings(new=new)
     await state.clear()
     await message.answer(text="✅ Изменения сохранены", reply_markup=MENU_KEYBOARD_MARKUP)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(0.2)
     await handle_admin_manage_payment_defaults(callback=data["callback"])
 
 
 
 #-------------------------------------------Coast editing---------------------------------------------------------
+
+### XTR RATE -----------------------------------------------------------------------------------------------------
+@router.callback_query((F.data == "admin_change_payment_defaults_xtr_rate") & (F.message.from_user.id in ADMINS))
+async def handle_admin_change_payment_defaults_xtr_rate(callback: CallbackQuery, state: FSMContext):
+    await callback.answer(f"Now rate is {use_PREFERRED_PAYMENT_SETTINGS()['XTR_exchange_rate']}")
+    answer = "💸 Какая новая цена? (ex. 1.8)"
+    await callback.message.answer(answer, reply_markup=CANCEL_KB)
+    await state.update_data(callback=callback)
+    await state.set_state(XTRRateChangingState.coast)
+
+@router.message(XTRRateChangingState.coast)
+async def admin_change_payment_defaults_xtr_rate_value(message: Message, state: FSMContext):
+    try:
+        coast = float(message.text.strip())
+    except ValueError:
+        await message.answer("Ошибка ❗\nВероятно это не число, а какая-то залупа 😑")
+        return 0
+
+    kb = ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="✅ Подтвердить"), KeyboardButton(text="❌ Отмена")]
+    ], resize_keyboard=True)
+
+    await state.set_state(XTRRateChangingState.confirmation)
+    await message.answer(text=f"❔ Сохраняем изменения?\n1 🌟XTR = {use_PREFERRED_PAYMENT_SETTINGS()['XTR_exchange_rate']} руб. -> {coast} руб.", reply_markup=kb, parse_mode="HTML")
+    await state.update_data(coast=coast)
+
+@router.message(XTRRateChangingState.confirmation)
+async def handle_admin_change_payment_defaults_xtr_rate_confirmation(message: Message, state: FSMContext):
+    data = await state.get_data()
+    new = dict(use_PREFERRED_PAYMENT_SETTINGS())
+    new["XTR_exchange_rate"] = data["coast"]
+    edit_preferred_payment_settings(new=new)
+    await state.clear()
+    await message.answer(text="✅ Изменения сохранены", reply_markup=MENU_KEYBOARD_MARKUP)
+    await asyncio.sleep(0.2)
+    await handle_admin_manage_payment_defaults(callback=data["callback"])
+
+### XTR RATE -----------------------------------------------------------------------------------------------------
+
+
+### Refund system ------------------------------------------------------------------------------------------------
+
+@router.callback_query((F.data == "admin_create_xtr_refund") & (F.message.from_user.id in ADMINS))
+async def handle_admin_create_xtr_refund(callback: CallbackQuery, state: FSMContext):
+    await callback.answer(f"Now rate is {use_PREFERRED_PAYMENT_SETTINGS()['XTR_exchange_rate']}")
+    answer = "👤 Какой userID и telegram charge id?\nСколько 🌟XTR участвовало?\n👉 Формат ответа: <b>кол.XTR:userID:charge_id</b>"
+    await callback.message.answer(answer, reply_markup=CANCEL_KB)
+    await state.update_data(callback=callback)
+    await state.set_state(XTRRefundCreationState.userID)
+
+@router.message(XTRRefundCreationState.userID)
+async def admin_create_xtr_refund_value(message: Message, state: FSMContext):
+    try:
+        data = message.text.strip().split(":")
+        userID = int(data[1])
+        charge_id = str(data[2])
+        amount = int(data[0])
+    except ValueError:
+        await message.answer("Ошибка ❗\nВероятно в твоём ответе какая-то залупа 😑")
+        return 0
+    user: User = await UsersDatabase.get_user_by(ID=str(userID))
+    kb = ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="✅ Подтвердить"), KeyboardButton(text="❌ Отмена")]
+    ], resize_keyboard=True)
+
+    await state.set_state(XTRRefundCreationState.confirmation)
+    await message.answer(text=f"👤 User: {user.userTG}\n💵 Баланс: {user.moneyBalance}🌟XTR\n❔ Точно тот user и charge_id?\n❔ Точно делаем refund на {amount}?", reply_markup=kb, parse_mode="HTML")
+    await state.update_data(userID=userID, charge_id=charge_id, amount=amount)
+
+@router.message(XTRRefundCreationState.confirmation)
+async def handle_admin_create_xtr_refund_confirmation(message: Message, state: FSMContext):
+    data = await state.get_data()
+    user: User = await UsersDatabase.get_user_by(ID=str(data["userID"]))
+    await UsersDatabase.update_user(user, {"moneyBalance": user.moneyBalance - data["amount"]})
+    await message.bot.refund_star_payment(data["userID"], data["charge_id"])
+    await state.clear()
+    await message.answer(text=f"✅ Refund сделан {user.userTG}.", reply_markup=MENU_KEYBOARD_MARKUP)
+
+### Refund system ------------------------------------------------------------------------------------------------
+
+
+
 @router.callback_query((F.data == "admin_change_payment_defaults_coast") & (F.message.from_user.id in ADMINS))
 async def handle_admin_change_payment_defaults_server(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
@@ -324,5 +422,5 @@ async def handle_admin_change_payment_defaults_protocol_confirmation(message: Me
     edit_preferred_payment_settings(new=new)
     await state.clear()
     await message.answer(text="✅ Изменения сохранены", reply_markup=MENU_KEYBOARD_MARKUP)
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(0.2)
     await handle_admin_manage_payment_defaults(callback=data["callback"])
