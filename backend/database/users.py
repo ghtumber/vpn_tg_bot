@@ -55,7 +55,7 @@ class UsersDatabase:
                             xclient=xClient, PaymentSum=int(result["PaymentSum"]), PaymentDate=PaymentDate, tariff=result["tariff"],
                             serverName=result["serverName"], uuid=result["uuid"], serverType=result["serverType"]["value"],
                             Protocol=result["Protocol"]["value"], moneyBalance=float(result["moneyBalance"]), who_invited=result["who_invited"],
-                            referBonus=result["referBonus"]))
+                            referBonus=result["referBonus"], UserReliability=result["UserReliability"]))
                 return res, int(obj["count"])
             else:
                 print(f"##########\nException: Get all users request ERROR!\n{text}\n##########")
@@ -115,7 +115,7 @@ class UsersDatabase:
                             xClient: XClient = await server.get_client_info(UUID)
                 return User(id=int(u["id"]), userID=int(u["userID"]), userTG=u["userTG"], outline_client=outlineClient, xclient=xClient, PaymentSum=int(u["PaymentSum"]),
                             PaymentDate=PaymentDate, serverName=u["serverName"], uuid=UUID, serverType=serverType["value"], tariff=u["tariff"],
-                            Protocol=u["Protocol"]["value"], moneyBalance=float(u["moneyBalance"]), who_invited=u["who_invited"], referBonus=u["referBonus"])
+                            Protocol=u["Protocol"]["value"], moneyBalance=float(u["moneyBalance"]), who_invited=u["who_invited"], referBonus=u["referBonus"], UserReliability=u["UserReliability"])
             else:
                 print(f"##########\nException: Get request ERROR! {ID=} {TG=}\n{UUID=}\n{KEY=}\n{text}\n##########")
                 return None
@@ -175,7 +175,8 @@ class UsersDatabase:
                     "uuid": user.uuid,
                     "moneyBalance": 0,
                     "who_invited": user.who_invited,
-                    "referBonus": user.referBonus
+                    "referBonus": user.referBonus,
+                    "UserReliability": user.reliability
                 }
             )
             text = await response.text()
@@ -187,7 +188,8 @@ class UsersDatabase:
                     PD = u["PaymentDate"].split("-")
                     PaymentDate = date(int(PD[0]), int(PD[1]), int(PD[2]))
                 return User(id=user.id, userID=int(u["userID"]), userTG=u["userTG"], PaymentSum=int(u["PaymentSum"]), PaymentDate=PaymentDate, serverName=u["serverName"],
-                            serverType=user.serverType, Protocol=u["Protocol"], moneyBalance=0, tariff=u["tariff"], who_invited=u["who_invited"], referBonus=u["referBonus"])
+                            serverType=user.serverType, Protocol=u["Protocol"], moneyBalance=0, tariff=u["tariff"], who_invited=u["who_invited"], referBonus=u["referBonus"],
+                            UserReliability=user.reliability)
             else:
                 raise Exception(f"Create request ERROR!\n{text}")
 
@@ -235,7 +237,8 @@ class UsersDatabase:
                     "uuid": user.uuid,
                     "moneyBalance": user.moneyBalance,
                     "who_invited": user.who_invited,
-                    "referBonus": user.referBonus
+                    "referBonus": user.referBonus,
+                    "UserReliability": user.reliability
                 }
             )
             text = await response.text()
@@ -249,8 +252,8 @@ class UsersDatabase:
                 return User(id=user.id, userID=int(u["userID"]), userTG=u["userTG"], outline_client=user.outline_client,
                             xclient=user.xclient, PaymentSum=int(u["PaymentSum"]), moneyBalance=u["moneyBalance"],
                             PaymentDate=PaymentDate, serverName=u["serverName"], uuid=user.uuid,
-                            serverType=user.serverType, Protocol=u["Protocol"], referBonus=user.referBonus, who_invited=user.who_invited,
-                            tariff=u["tariff"])
+                            serverType=u["serverType"], Protocol=u["Protocol"], referBonus=u["referBonus"], who_invited=user.who_invited,
+                            tariff=u["tariff"], UserReliability=user.reliability)
             else:
                 raise Exception(f"!!! Update request ERROR!\n{text}")
 

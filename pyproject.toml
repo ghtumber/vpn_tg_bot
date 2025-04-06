@@ -1,0 +1,12 @@
+[project]
+name = "vpn-tg-bot"
+version = "0.1.0"
+description = "Telegram Proxym1ty bot"
+requires-python = ">=3.11"
+dependencies = [
+    "aiogram>=3.19.0",
+    "apscheduler>=3.11.0",
+    "dotenv>=0.9.9",
+    "outline-vpn-api>=6.3.0",
+    "requests>=2.32.3",
+]

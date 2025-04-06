@@ -9,7 +9,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
-from outline_vpn.outline_vpn import OutlineKey
 
 from backend.database.users import UsersDatabase
 from backend.models import User, XClient
@@ -834,7 +833,7 @@ async def handle_key_data_limiting(message: Message, state: FSMContext):
     await state.update_data(data_limit=limit)
     data = await state.get_data()
     await state.clear()
-    key: OutlineKey = data["server"].create_new_key(name=data["name"], data_limit_gb=data["data_limit"])
+    key = data["server"].create_new_key(name=data["name"], data_limit_gb=data["data_limit"])
     link = str(key.access_url).split("?")[0] + "#Proxym1ty-VPN"
     #raise Exception(f"{key=}")
     # print(f"{key=}")

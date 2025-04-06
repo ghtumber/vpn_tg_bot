@@ -71,10 +71,11 @@ class OutlineClient:
 
 class User:
     def __init__(self, userID: int, userTG: str, PaymentSum: int, PaymentDate: date, serverName: str, serverType: str, who_invited: str | None, referBonus: int,
-                 Protocol: str, moneyBalance: float, tariff: str, xclient: XClient = None, outline_client: OutlineClient = None, id: int = None, uuid: str = ""):
+                 Protocol: str, moneyBalance: float, tariff: str, UserReliability: bool = False, xclient: XClient = None, outline_client: OutlineClient = None, id: int = None, uuid: str = ""):
         self.id = id
         self.uuid = uuid
         self.moneyBalance = moneyBalance
+        self.reliability = UserReliability
         self.tariff = tariff
         self.who_invited = who_invited
         self.referBonus = referBonus

@@ -206,3 +206,9 @@ BALANCE_TOPUP_INVITER_REPLY = lambda user, sum: f"""
 BALANCE_TOPUP_USER_REPLY = lambda user, summ: f"""
 ✅ <b>Пополнение баланса</b> на сумму {summ}🌟XTR!
 💵 <b>Баланс</b>: {user.moneyBalance}🌟XTR"""
+
+BALANCE_TOPUP_BY_RELIABLE_USER = lambda user, userID, comment: f"""
+⌚ Пополнение переводом ожидает!
+👤 <b>User</b>: {user}
+🆔 <b> userID </b> <code>{userID}</code>
+🧾 <b>Коммент</b>: {comment}"""

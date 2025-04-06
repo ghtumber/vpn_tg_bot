@@ -28,7 +28,7 @@ async def handle_xtr_payment(message: Message):
         await message.answer(text=BALANCE_TOPUP_USER_REPLY(user, summ), kb=kb)
     await asyncio.sleep(2)
 
-    # await message.bot.refund_star_payment(message.from_user.id, payment.telegram_payment_charge_id)
+    await message.bot.refund_star_payment(message.from_user.id, payment.telegram_payment_charge_id)
 
 class XTRPayments:
     @staticmethod

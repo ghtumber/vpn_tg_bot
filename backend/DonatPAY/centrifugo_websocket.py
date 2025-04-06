@@ -9,7 +9,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from backend.database.users import UsersDatabase
 from frontend.replys import NEW_DONATION_ADMIN_REPLY, BALANCE_TOPUP_USER_REPLY, CENTRIFUGO_ERROR, BALANCE_TOPUP_INVITER_REPLY
-from globals import ADMINS, DONATPAY_API_KEY, TOKEN, SHUTDOWN
+from globals import ADMINS, TOKEN, SHUTDOWN
 
 
 _bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
@@ -19,13 +19,13 @@ async def send_bot_message(text: str, chat_id: int, kb: InlineKeyboardMarkup = N
 
 def get_token():
     url = 'https://donatepay.ru/api/v2/socket/token'
-    data = {'access_token': DONATPAY_API_KEY}
+    data = {'access_token': None}
     headers = {'Content-Type': 'application/json'}
     response = requests.post(url, json=data, headers=headers)
     return response.json()['token']
 
 def get_sub_token(client, channel):
-    url = f"https://donatepay.ru/api/v2/socket/token?access_token={DONATPAY_API_KEY}"
+    url = f"https://donatepay.ru/api/v2/socket/token?access_token={None}"
     data = {"client": client, "channels": [channel]}
     headers = {'Content-Type': 'application/json'}
     response = requests.post(url, json=data, headers=headers)
