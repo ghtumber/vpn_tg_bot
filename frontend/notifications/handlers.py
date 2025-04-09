@@ -91,13 +91,16 @@ async def check_period():
     for page in range(1, rng + 1):
         all_users, _ = await UsersDatabase.get_all_users(page=page, size=100)
         for user in all_users:
-            server: XServer = None
             for svr in use_XSERVERS():
                 if svr.name == user.serverName:
-                    server = svr
-                    user.xclient = await svr.get_client_info(identifier=user.uuid)
-                    user_traffic = await svr.get_client_traffics(uuid=user.xclient.uuid)
-                    user_traffic = user_traffic["up"] + user_traffic["down"]
+                    user_traffic = None
+                    try:
+                        user.xclient = await svr.get_client_info(identifier=user.uuid)
+                        user_traffic = await svr.get_client_traffics(uuid=user.xclient.uuid)
+                        user_traffic = user_traffic["up"] + user_traffic["down"]
+                    except AttributeError:
+                        print(f"[check_period() ERROR] {user.xclient=} {user_traffic=}")
+                        user.xclient = None
                     break
             if user.xclient:
                 if timedelta(days=3) > (datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000) - now) >= timedelta(days=-2):

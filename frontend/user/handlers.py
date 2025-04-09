@@ -62,7 +62,8 @@ async def handle_topup_user_balance(callback: CallbackQuery):
         summ = int(use_PREFERRED_PAYMENT_SETTINGS()['Tariffs'][i]['coast'])
         kb.append([InlineKeyboardButton(text=f"🌟 Пополнить на {summ}", callback_data=f"get_topup_invoice_{summ}")])
     kb.append([InlineKeyboardButton(text=f"🌟 Пополнить на другое количество", callback_data=f"topup_for_custom_sum")])
-    kb.append([InlineKeyboardButton(text=f"🤙 Пополнить переводом", callback_data=f"topup_reliable_user")])
+    if user.reliability:
+        kb.append([InlineKeyboardButton(text=f"🤙 Пополнить переводом", callback_data=f"topup_reliable_user")])
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=kb
     )

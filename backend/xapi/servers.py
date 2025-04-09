@@ -73,7 +73,7 @@ class XServer:
         await self.get_session()
         """Returns list off all online users (list of emails)"""
         async with aiohttp.ClientSession() as s:
-            resp = await s.post(url=f"https://{self.ip}:{self.port}/{self.path}/panel/api/inbounds/onlines", ssl=ssl_context, cookies=self.login_cookies)
+            resp = await s.post(url=f"https://{self.ip}:{self.port}/{self.path}/panel/api/inbounds/onlines", ssl=ssl_context, cookies=self.login_cookies, timeout=15)
         if resp.status == 200:
             # print(await resp.text())
             js = await resp.json()

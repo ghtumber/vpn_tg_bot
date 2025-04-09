@@ -115,7 +115,7 @@ class UsersDatabase:
                             xClient: XClient = await server.get_client_info(UUID)
                 return User(id=int(u["id"]), userID=int(u["userID"]), userTG=u["userTG"], outline_client=outlineClient, xclient=xClient, PaymentSum=int(u["PaymentSum"]),
                             PaymentDate=PaymentDate, serverName=u["serverName"], uuid=UUID, serverType=serverType["value"], tariff=u["tariff"],
-                            Protocol=u["Protocol"]["value"], moneyBalance=float(u["moneyBalance"]), who_invited=u["who_invited"], referBonus=u["referBonus"], UserReliability=u["UserReliability"])
+                            Protocol=u["Protocol"]["value"], moneyBalance=float(u["moneyBalance"]), who_invited=u["who_invited"], referBonus=u["referBonus"], UserReliability=bool(u["UserReliability"]))
             else:
                 print(f"##########\nException: Get request ERROR! {ID=} {TG=}\n{UUID=}\n{KEY=}\n{text}\n##########")
                 return None

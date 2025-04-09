@@ -97,9 +97,6 @@ class User:
 
     def change(self, field, new_value):
         match field:
-            case "lastPaymentDate":
-                self.lastPaymentDate = new_value
-                return
             case "moneyBalance":
                 print(f"[WARNING] {self.userTG} moneyBalance changed from {self.moneyBalance} to {new_value}")
                 self.moneyBalance = new_value

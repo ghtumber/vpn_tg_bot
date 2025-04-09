@@ -3,6 +3,8 @@ import logging
 import sys
 from datetime import datetime
 import time
+
+import aiohttp.client_exceptions
 from aiogram import Dispatcher, F
 from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.fsm.context import FSMContext
@@ -121,7 +123,10 @@ async def admin_menu(message: Message):
     online_users_count = 0
     # print(f"{''.join([' ' + r.ip for r in use_XSERVERS()])}")
     for server in use_XSERVERS():
-        online_users = await server.get_online_users()
+        try:
+            online_users = await server.get_online_users()
+        except aiohttp.client_exceptions.ConnectionTimeoutError:
+            online_users = 0
         online_users_count += len(online_users)
 
     await message.answer(ADMIN_GREETING_REPLY(username=f"@{message.from_user.username}", online_users_count=online_users_count,
