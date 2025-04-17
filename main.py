@@ -215,7 +215,7 @@ def get_utc_time(time_to_convert: datetime) -> datetime:
 
 async def main():
     await get_servers()
-    period_checker_scheduler.start()
+    # period_checker_scheduler.start()
     server_checker_scheduler.start()
     await dp.start_polling(bot, polling_timeout=60)
 

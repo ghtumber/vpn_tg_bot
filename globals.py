@@ -31,7 +31,7 @@ def add_months(sourcedate, months):
 print(f"[TIMEZONE] {time.tzname} UTC{'+' if time.timezone < 0 else '-'}{-time.timezone // 3600}")
 
 TOKEN = getenv("BOT_TOKEN") if not DEBUG else getenv("DEBUG_BOT_TOKEN")
-ADMINS = [1124386913, 5475897905] # 902448626
+ADMINS = [1124386913, 5475897905, 6476836355] # 902448626
 
 REFERRAL_PERCENTAGE_QUEUE = [0, 11, 20, 27, 32, 35, 36, 49, 64, 81, 100]
 
