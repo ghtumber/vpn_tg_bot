@@ -1,0 +1,4 @@
+/.env
+/preferred_payment_settings.json
+/.venv/
+/venv/
