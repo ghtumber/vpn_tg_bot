@@ -558,7 +558,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
 📡 <b>Протокол</b>: {"ShadowSocks" if not xclient.flow else "VLESS"}
 🛰 <b>Сервер</b>: {data["server"].name}
 ⏹ <b>Трафик</b>: {round((client_traffics["up"] + client_traffics["down"]) / 1024**3, 2)}/{xclient.totalGB / 1024**3}GB
-🕓 <b>Истекает</b>: {exprDate}
+🕓 <b>Истекает</b>: {exprDate if xclient.expiryTime else "♾ Вечный"}
 🔑 <b>Ключ</b>: <pre><code>{await xclient.get_key(use_XSERVERS())}</code></pre>
 <span class="tg-spoiler">|api|{data["server"].name}:{inbound.id}:{xclient.uuid}|api|</span>
 """

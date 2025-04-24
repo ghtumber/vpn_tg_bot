@@ -313,8 +313,11 @@ class Inbound:
             return key
         if self.protocol == "shadowsocks":
             client_password = client_data['clients'][0]['password']
-            auth_info = f"{self.settings['method']}:{self.settings['password']}:{client_password}"
-            print(f"{auth_info=}")
+            if self.settings['method'] == "aes-256-gcm":
+                auth_info = f"{self.settings['method']}:{client_password}"
+            else:
+                auth_info = f"{self.settings['method']}:{self.settings['password']}:{client_password}"
+            #print(f"{auth_info=}")
             auth_info_base64 = base64.standard_b64encode(auth_info.encode())
             auth_info_base64 = str(auth_info_base64)[2:-1]
             auth_info_base64 = auth_info_base64.replace("=", "")
