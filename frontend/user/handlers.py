@@ -351,10 +351,12 @@ async def handle_regain_user_access(callback: CallbackQuery):
         user.change("moneyBalance", user.moneyBalance - user.PaymentSum)
         new_date = add_months(user.PaymentDate, 1)
         epoch = datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0) - timedelta(seconds=time.timezone)
+        delta = timedelta(hours=14) if time.timezone == 0 else timedelta(hours=19)
         user.xclient.enable = True
-        await data["inbound"].update_client(user.xclient, {"expiryTime": (datetime(new_date.year, new_date.month, new_date.day) - epoch + timedelta(hours=19)).total_seconds() * 1000, "enable": True})
+        await data["inbound"].update_client(user.xclient, {"expiryTime": (datetime(new_date.year, new_date.month, new_date.day) - epoch + delta).total_seconds() * 1000, "enable": True})
         await data["inbound"].reset_client_traffic(user.xclient.for_api())
         user.change("PaymentDate", new_date)
+        print(f"{use_XSERVERS()=}")
         await user.xclient.get_key(use_XSERVERS())
         await UsersDatabase.update_user(user)
         await callback.message.answer(text=PAYMENT_SUCCESS(user), reply_markup=MENU_KEYBOARD_MARKUP)

@@ -47,7 +47,7 @@ class XServer:
 
     async def check_data(self, force=False):
         now = datetime.today()
-        if (now - self.last_update_time) > timedelta(minutes=10) or force:
+        if (now - self.last_update_time) > timedelta(minutes=5) or force:
             exist = await self.get_inbounds()
             if exist is None:
                 return None
@@ -268,7 +268,7 @@ class Inbound:
             "settings": json.dumps(obj=settings)
         }
         async with aiohttp.ClientSession() as s:
-            resp = await s.post(url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/updateClient/{client.uuid}",
+            resp = await s.post(url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/updateClient/{client.uuid if client.flow else client.email}",
                                 ssl=ssl_context, data=data, cookies=self.server.login_cookies)
             if resp.status == 200:
                 await self.get_data()

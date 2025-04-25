@@ -521,7 +521,7 @@ async def handle_xserver_xclient_person_selection(message: Message, state: FSMCo
     clients = await server.get_all_clients()
     text = ""
     for client in clients:
-        text += f"\n🏷Email: {client.email}\n🆔UUID: <code>{client.uuid}</code>"
+        text += f"\n🏷Email: {client.email}\n🆔UUID: <code>{client.uuid if not client.password else client.email}</code>"
 
     await state.update_data(server=server)
     await state.set_state(XserverClientListing.UUID)
@@ -533,8 +533,11 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
     await state.update_data(UUID=message.text.strip())
     data = await state.get_data()
     await state.clear()
-    xclient: XClient= await data["server"].get_client_info(identifier=data["UUID"])
-    client_traffics = await data["server"].get_client_traffics(uuid=data["UUID"])
+    xclient: XClient = await data["server"].get_client_info(identifier=data["UUID"])
+    if xclient.password:
+        client_traffics = await data["server"].get_client_traffics(email=data["UUID"])
+    else:
+        client_traffics = await data["server"].get_client_traffics(uuid=data["UUID"])
     inbound = None
     for inb in data["server"].inbounds:
         if xclient.flow:
@@ -560,7 +563,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
 ⏹ <b>Трафик</b>: {round((client_traffics["up"] + client_traffics["down"]) / 1024**3, 2)}/{xclient.totalGB / 1024**3}GB
 🕓 <b>Истекает</b>: {exprDate if xclient.expiryTime else "♾ Вечный"}
 🔑 <b>Ключ</b>: <pre><code>{await xclient.get_key(use_XSERVERS())}</code></pre>
-<span class="tg-spoiler">|api|{data["server"].name}:{inbound.id}:{xclient.uuid}|api|</span>
+<span class="tg-spoiler">|api|{data["server"].name}:{inbound.id}:{xclient.uuid if xclient.uuid else xclient.email}|api|</span>
 """
     if xclient.enable:
         turn_text = "📴 Выключить"
@@ -760,8 +763,12 @@ async def handle_xserver_updateExpriryDate_confirmation(message: Message, state:
     new_date = data["new_value"]
     inbound: Inbound = data["inbound"]
     for cl in inbound.settings["clients"]:
-        if cl["id"] == data["UUID"]:
-            client = XClient.create_from_dict(cl)
+        if inbound.protocol == "vless":
+            if cl["id"] == data["UUID"]:
+                client = XClient.create_from_dict(cl)
+        elif inbound.protocol == "shadowsocks":
+            if cl["email"] == data["UUID"]:
+                client = XClient.create_from_dict(cl)
     epoch = datetime.utcfromtimestamp(0)
     delta = timedelta(hours=14) if time.timezone == 0 else timedelta(hours=19)
     success = await inbound.update_client(client, {

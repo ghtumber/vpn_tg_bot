@@ -29,14 +29,17 @@ class XClient:
         for s in servers:
             await s.get_inbounds()
             for inb in s.inbounds:
+                #print(f"Checking {inb.settings}")
                 for cl in inb.settings["clients"]:
-                    if "id" in cl.keys():
-                        # print(f"finding {cl} {self.uuid=}")
-                        if cl["id"] == self.uuid:
-                            return {"server": s, "inbound": inb}
-                    elif "password" in cl.keys():
+                    #print(f"finding {self.email=} {self.uuid=} {cl}")
+                    if "password" in cl.keys():
                         if cl["password"] == self.password:
                             return {"server": s, "inbound": inb}
+                    elif "id" in cl.keys():
+                        #print(f"finding {cl} {self.uuid=}")
+                        if cl["id"] == self.uuid:
+                            return {"server": s, "inbound": inb}
+
 
     @staticmethod
     def create_from_dict(dct):
@@ -59,8 +62,26 @@ class XClient:
         if self.flow:
             return {"id": self.uuid, "email": self.email, "enable": self.enable, "expiryTime": self.expiryTime, "flow": self.flow,
                     "limitIp": self.limitIp, "reset": self.reset, "tgId": self.tgId, "totalGB": self.totalGB}
-        return {"email": self.email, "enable": self.enable, "expiryTime": self.expiryTime, "password": self.password, "flow": self.flow,
-                "limitIp": self.limitIp, "reset": self.reset, "tgId": self.tgId, "totalGB": self.totalGB, "id": self.email, "subId": self.subId}
+
+        """
+        {"clients":[
+        {
+        "id":"SHAD_test", 
+        "email":"SHAD_test",
+        "password": "dNUuvSpHcoB926CpA+TQiFlAC8MJgWWTOSv+TK20CEI=", 
+        "limitIp":2,
+        "totalGB":42949672960,
+        "expiryTime":1745607600000,
+        "enable":true,
+        "tgId":"",
+        "subId":"8t9lcsk0kysdt3rt",
+        "reset": 0
+        }
+        ]
+        }
+        """
+        return {"id": self.email, "email": self.email, "enable": self.enable, "expiryTime": self.expiryTime, "password": self.password, "flow": "",
+                "limitIp": self.limitIp, "reset": self.reset, "tgId": self.tgId, "totalGB": self.totalGB, "subId": self.subId}
 
 @dataclass()
 class OutlineClient:
