@@ -261,7 +261,9 @@ async def handle_xserver_updateUserExpriryDate_confirmation(message: Message, st
     new_date = data["new_value"]
     inbound: Inbound = data["inbound"]
     for cl in inbound.settings["clients"]:
-        if cl["id"] == data["user"].uuid:
+        if "id" in cl.keys() and cl["id"] == data["user"].uuid:
+            client = XClient.create_from_dict(cl)
+        elif "id" not in cl.keys() and cl["email"] == data["user"].uuid:
             client = XClient.create_from_dict(cl)
     if client:
         epoch = datetime.utcfromtimestamp(0)
