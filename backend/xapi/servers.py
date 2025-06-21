@@ -23,6 +23,7 @@ ssl_context.verify_mode = ssl.CERT_NONE
 @dataclass()
 class XServer:
     LOGIN = getenv("SERVER_LOGIN")
+    SUB_URL = getenv('SUB_URL')
     PASSWORD = getenv("SERVER_PASSWORD")
     def __init__(self, ip, port, path, tariff, location="🇩🇪Germany"):
         self.name = f"XServer@{ip}"
@@ -108,10 +109,14 @@ class XServer:
                 if "id" in client_dict.keys():
                     if client_dict["id"] == identifier:
                         # print(f"get_client_info() -> {client_dict}")
-                        return XClient.create_from_dict(dct=client_dict)
+                        client = XClient.create_from_dict(dct=client_dict)
+                        client.sub_key = f"http://{self.ip}:2096{self.SUB_URL}{client.subId}"
+                        return client
                 elif "password" in client_dict.keys():
                     if client_dict["email"] == identifier:
-                        return  XClient.create_from_dict(dct=client_dict)
+                        client = XClient.create_from_dict(dct=client_dict)
+                        client.sub_key = f"http://{self.ip}:2096{self.SUB_URL}{client.subId}"
+                        return client
         return None
 
     async def get_all_clients(self) -> list[XClient]:
@@ -207,10 +212,10 @@ class Inbound:
                 self.settings = json.loads(obj["settings"])
                 # супер странная часть кода
                 # ------------------------------------
-                clients = []
-                for c in self.settings["clients"]:
-                    client = XClient.create_from_dict(c)
-                    clients.append(client)
+                # clients = []
+                # for c in self.settings["clients"]:
+                #     client = XClient.create_from_dict(c)
+                #     clients.append(client)
                 # self.settings["clients"] = clients
                 # -------------------------------------
                 self.streamSettings = json.loads(obj["streamSettings"])
@@ -220,14 +225,14 @@ class Inbound:
                 if obj["allocate"] != '':
                     self.allocate = json.loads(obj["allocate"])
                 return self
-        raise Exception(f"[{resp.status}]Get data exception! Check: URI, COOKIES")\
+        raise Exception(f"[{resp.status}]Get data exception! Check: URI, COOKIES")
 
-    async def add_client(self, email: str, tgId: int = 0, expiryTime: int = 0, totalBytes: int = 0, limitIp: int = 0) -> XClient:
+    async def add_client(self, email: str, subId: str, tgId: int = 0, expiryTime: int = 0, totalBytes: int = 0, limitIp: int = 0) -> XClient:
         """Adds client to inbound, returns client with key"""
         await self.server.get_session()
         if self.protocol == "vless":
             client = XClient(uuid=str(uuid.uuid4()), flow="xtls-rprx-vision", email=email, limitIp=limitIp, totalGB=totalBytes, expiryTime=expiryTime,
-                            enable=True, tgId=tgId, reset=0)
+                            enable=True, tgId=tgId, reset=0, subId=subId)
             settings = {"clients": [client.for_api()]}
             data = {
                 "id": self.id,
@@ -235,9 +240,7 @@ class Inbound:
             }
         if self.protocol == "shadowsocks":
             random_bytes = os.urandom(32)
-            l = string.ascii_lowercase + string.digits
             password = base64.standard_b64encode(random_bytes).decode()
-            subId = "".join(random.choice(l) for _ in range(16))
             client = XClient(uuid=email, email=email, limitIp=limitIp, totalGB=totalBytes, expiryTime=expiryTime, enable=True, tgId=tgId, reset=0,
                              password=password, subId=subId)
             settings = {"clients": [client.for_api()]}
@@ -251,6 +254,7 @@ class Inbound:
         if resp.status == 200:
             await self.get_data()
             client.key = self.form_key(client_data=settings)
+            client.sub_key = f"http://{self.server.ip}:2096{self.server.SUB_URL}{subId}"
             return client
         raise Exception(f"[{resp.status}]Add user exception! Check: URI, COOKIES")
 
@@ -309,7 +313,7 @@ class Inbound:
             spx = self.streamSettings["realitySettings"]["settings"]["spiderX"]
             flow = client_data["clients"][0]["flow"]
             client_id = client_data["clients"][0]["id"]
-            key = f"{self.protocol}://{client_id}@{self.server.ip}:{self.vpn_port}?type={type}&security={security}&pbk={pbk}&fp={fp}&sni={sni}&sid={sid}&spx={spx}&flow={flow}#PROXYM1TY"
+            key = f"{self.protocol}://{client_id}@{self.server.ip}:{self.vpn_port}?type={type}&security={security}&pbk={pbk}&fp={fp}&sni={sni}&sid={sid}&spx={spx}&flow={flow}#PROXYM1TY-{client_data['clients'][0]['email']}"
             return key
         if self.protocol == "shadowsocks":
             client_password = client_data['clients'][0]['password']
@@ -322,7 +326,7 @@ class Inbound:
             auth_info_base64 = str(auth_info_base64)[2:-1]
             auth_info_base64 = auth_info_base64.replace("=", "")
             network = self.streamSettings["network"]
-            key = f"ss://{auth_info_base64}@{self.server.ip}:{self.vpn_port}?type={network}#PROXYM1TY"
+            key = f"ss://{auth_info_base64}@{self.server.ip}:{self.vpn_port}?type={network}##PROXYM1TY-{client_data['clients'][0]['email']}"
             return key
         raise Exception(f"Key forming error. Check data exist! {self.protocol=}")
 

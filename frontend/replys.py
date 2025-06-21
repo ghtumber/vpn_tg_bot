@@ -1,4 +1,4 @@
-from globals import All_Tariffs
+from globals import All_Tariffs, use_PREFERRED_PAYMENT_SETTINGS
 
 REPLY_REGISTRATION = lambda who_invited: f"""
 👋 Приветствуем в proxym1ty!
@@ -77,6 +77,7 @@ CLEAN_USER_GREETING_REPLY = lambda username, user_balance: f"""
 
 Здесь ты можешь управлять своим VPN
 
+🔥 Сейчас доступен тестовый период 4 дня!
 💵 <b>Баланс</b>: {user_balance}🌟XTR
 
 ⚡ Чтобы купить VPN, просто выбери нужный пункт.
@@ -171,9 +172,10 @@ AWAIT_DONAT_FETCH = lambda user: f"""
 """
 
 
-NEW_PRE_PAYMENT_ADMIN_REPLY = lambda name, currency, sum,: f"""
+NEW_PRE_PAYMENT_ADMIN_REPLY = lambda name, currency, sum, ID: f"""
 💸 Новая оплата!
 🚹 Name: {name}
+🆔 ID: <code>{ID}</code>
 🧾 Валюта: {currency}
 💰 Сумма: {sum}
 """
@@ -207,8 +209,10 @@ BALANCE_TOPUP_USER_REPLY = lambda user, summ: f"""
 ✅ <b>Пополнение баланса</b> на сумму {summ}🌟XTR!
 💵 <b>Баланс</b>: {user.moneyBalance}🌟XTR"""
 
-BALANCE_TOPUP_BY_RELIABLE_USER = lambda user, userID, comment: f"""
+BALANCE_TOPUP_BY_RELIABLE_USER = lambda userTG, userID, comment, user: f"""
 ⌚ Пополнение переводом ожидает!
-👤 <b>User</b>: {user}
-🆔 <b> userID </b> <code>{userID}</code>
-🧾 <b>Коммент</b>: {comment}"""
+👤 <b>User</b>: {userTG}
+🆔 <b>userID</b>: 📋<code>{userID}</code>
+💸 <b>Подписка</b>: {user.PaymentSum}🌟XTR (~ {user.PaymentSum*float(use_PREFERRED_PAYMENT_SETTINGS()["XTR_exchange_rate"])}руб)
+📈 <b>Курс XTR</b>: 100р - {int(100/use_PREFERRED_PAYMENT_SETTINGS()["XTR_exchange_rate"])}🌟XTR
+🧾 <b>Коммент</b>: <pre>{comment}</pre>"""

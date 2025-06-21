@@ -187,6 +187,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
     answer = f"""
 🔗 <b>TG</b>: {user.userTG}
 💰 <b>Balance</b>: {user.moneyBalance}🌟XTR
+💸 <b>Подписка</b>: {user.PaymentSum}🌟XTR (~ {user.PaymentSum*float(use_PREFERRED_PAYMENT_SETTINGS()["XTR_exchange_rate"])}руб)
 🆔 <b>UUID</b>: {user.uuid}
 📡 <b>Протокол</b>: {user.Protocol}
 🛰 <b>Сервер</b>: {user.serverType} -> {user.serverName}
@@ -337,7 +338,7 @@ async def handle_admin_change_user_balance_confirmation(message: Message, state:
     answer = f"""
 ✅ Данные изменены!
 🔗 <b>TG</b>: {user.userTG}
-💰 <b>Balance</b>: {user.moneyBalance}руб.
+💰 <b>Balance</b>: {user.moneyBalance}🌟XTR
 """
     await state.clear()
     await message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)

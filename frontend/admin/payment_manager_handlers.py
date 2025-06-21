@@ -334,7 +334,7 @@ async def handle_admin_change_payment_defaults_xtr_rate_confirmation(message: Me
 @router.callback_query((F.data == "admin_create_xtr_refund") & (F.message.from_user.id in ADMINS))
 async def handle_admin_create_xtr_refund(callback: CallbackQuery, state: FSMContext):
     await callback.answer(f"Now rate is {use_PREFERRED_PAYMENT_SETTINGS()['XTR_exchange_rate']}")
-    answer = "👤 Какой userID и telegram charge id?\nСколько 🌟XTR участвовало?\n👉 Формат ответа: <b>кол.XTR:userID:charge_id</b>"
+    answer = "👤 Какой userID и telegram charge id?\nСколько 🌟XTR участвовало?\n\n‼ Вернётся вся сумма транзакции!!!\nВычтет из баланса в БД то, что будет указано!\n\n👉 Формат ответа: <b>кол.XTR:userID:charge_id</b>"
     await callback.message.answer(answer, reply_markup=CANCEL_KB)
     await state.update_data(callback=callback)
     await state.set_state(XTRRefundCreationState.userID)

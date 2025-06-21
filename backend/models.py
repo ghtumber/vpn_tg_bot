@@ -18,11 +18,21 @@ class XClient:
     password: str = ""
     uuid: str = ""
     key: str = ""
+    sub_key: str = ""
 
     async def get_key(self, servers: list) -> str:
-        inb = await self.get_server_and_inbound(servers=servers)
-        self.key = inb["inbound"].form_key({"clients": [self.for_api()]})
+        if self.key:
+            return self.key
+        d = await self.get_server_and_inbound(servers=servers)
+        self.key = d["inbound"].form_key({"clients": [self.for_api()]})
         return self.key
+
+    async def get_sub_key(self, servers: list) -> str:
+        if self.sub_key:
+            return self.sub_key
+        d = await self.get_server_and_inbound(servers=servers)
+        self.sub_key = f"http://{d['server'].ip}:2096{d['server'].SUB_URL}{self.subId}"
+        return self.sub_key
 
     async def get_server_and_inbound(self, servers: list) -> dict:
         """Returns dict {`server`: s, `inbound`: inb}"""
@@ -39,7 +49,7 @@ class XClient:
                         #print(f"finding {cl} {self.uuid=}")
                         if cl["id"] == self.uuid:
                             return {"server": s, "inbound": inb}
-
+        return None
 
     @staticmethod
     def create_from_dict(dct):
@@ -50,9 +60,10 @@ class XClient:
         password = None
         if "password" in dct.keys():
             password = dct["password"]
-        subId = None
-        if "subId" in dct.keys():
-            subId = dct["subId"]
+        # subId = None
+        # if "subId" in dct.keys():
+        #     subId = dct["subId"]
+        subId = dct["subId"]
         if "id" in dct.keys():
             id = dct["id"]
         return XClient(uuid=id, reset=dct["reset"], enable=dct["enable"], totalGB=dct["totalGB"], expiryTime=dct["expiryTime"],
@@ -61,7 +72,7 @@ class XClient:
     def for_api(self):
         if self.flow:
             return {"id": self.uuid, "email": self.email, "enable": self.enable, "expiryTime": self.expiryTime, "flow": self.flow,
-                    "limitIp": self.limitIp, "reset": self.reset, "tgId": self.tgId, "totalGB": self.totalGB}
+                    "limitIp": self.limitIp, "reset": self.reset, "tgId": self.tgId, "totalGB": self.totalGB, "subId": self.subId}
 
         """
         {"clients":[
@@ -91,7 +102,7 @@ class OutlineClient:
 
 
 class User:
-    def __init__(self, userID: int, userTG: str, PaymentSum: int, PaymentDate: date, serverName: str, serverType: str, who_invited: str | None, referBonus: int,
+    def __init__(self, userID: int, userTG: str, PaymentSum: int, PaymentDate: date, serverName: str, serverType: str, who_invited: str | None, referBonus: int, subId: str,
                  Protocol: str, moneyBalance: float, tariff: str, UserReliability: bool = False, xclient: XClient = None, outline_client: OutlineClient = None, id: int = None, uuid: str = ""):
         self.id = id
         self.uuid = uuid
@@ -103,6 +114,7 @@ class User:
         self.Protocol = Protocol
         self.serverType = serverType
         self.userID = userID
+        self.subId = subId
         if re.fullmatch(r'@[a-zA-Z0-9_]+', r''.join(userTG)):
             self.userTG = userTG
         else:
@@ -143,6 +155,10 @@ class User:
                 return
             case "keyId":
                 self.outline_client.keyID = new_value
+                return
+            case "subId":
+                self.xclient.subId = new_value
+                self.subId = new_value
                 return
             case "key":
                 if self.outline_client:

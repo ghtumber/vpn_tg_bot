@@ -2,6 +2,7 @@ import asyncio
 import re
 import time
 from datetime import date, datetime, timedelta
+from time import sleep
 from typing import Protocol
 
 from aiogram import Router, F
@@ -12,12 +13,12 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 from backend.Payments.stars import XTRPayments
 from backend.models import User, OutlineClient, XClient
-from backend.xapi.servers import XServer
+from backend.xapi.servers import XServer, Inbound
 from frontend.replys import *
 from backend.outline.managers import SERVERS, OutlineManager
 from backend.database.users import UsersDatabase
 from globals import add_months, MENU_KEYBOARD_MARKUP, use_PREFERRED_PAYMENT_SETTINGS, use_XSERVERS, \
-    Available_Tariffs, use_Available_Tariffs, SPB_PAYMENT_DATA, CARD_PAYMENT_DATA, ADMINS, NAME_PAYMENT_DATA
+    Available_Tariffs, use_Available_Tariffs, SPB_PAYMENT_DATA, CARD_PAYMENT_DATA, ADMINS, NAME_PAYMENT_DATA, XSERVERS
 
 router = Router()
 
@@ -99,8 +100,9 @@ async def handle_reliable_user_transferred_topup(callback: CallbackQuery, state:
 @router.message(ReliableTopUp.comment)
 async def handle_topup_for_custom_sum_checkout(message: Message, state: FSMContext):
     comment = message.text.strip()
+    user: User = await UsersDatabase.get_user_by(ID=str(message.from_user.id))
     for adm in ADMINS:
-        await message.bot.send_message(chat_id=adm, text=BALANCE_TOPUP_BY_RELIABLE_USER(user=f"@{message.from_user.username}", userID=message.from_user.id, comment=comment))
+        await message.bot.send_message(chat_id=adm, text=BALANCE_TOPUP_BY_RELIABLE_USER(userTG=f"@{message.from_user.username}", userID=message.from_user.id, comment=comment, user=user))
     await message.answer("✅ Заявка составлена!\n⌚ Ожидайте пополнение.", reply_markup=MENU_KEYBOARD_MARKUP)
 
 @router.callback_query(F.data.startswith("topup_for_custom_sum"))
@@ -305,21 +307,12 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
             limitIp = 2 if data["tariff"] == "PROMO" else 5
             delta = timedelta(hours=15) if time.timezone == 0 else timedelta(hours=20)
             expiryTime = (datetime(dat.year, dat.month, dat.day) - epoch + delta).total_seconds() * 1000
-            client: XClient = await inb.add_client(email=message.from_user.username, tgId=message.from_user.id, totalBytes=500*1024**3, expiryTime=expiryTime, limitIp=limitIp)
+            client: XClient = await inb.add_client(email=message.from_user.username, tgId=message.from_user.id, totalBytes=500*1024**3, expiryTime=expiryTime, limitIp=limitIp, subId=user.subId)
             user.xclient = client
             user.Protocol = data["keyType"]
             user.serverType = "XSERVER"
             user.uuid = client.uuid
-            key = client.key
-    # elif data["configuration_type"] == "Outline":
-    #     server: OutlineManager = data["server"]
-    #     key = server.create_new_key(name=f"@{message.from_user.username}", data_limit_gb=500)
-    #     if not key.key_id:
-    #         key.key_id = "9999"
-    #     user.outline_client = OutlineClient(key=key.access_url, keyID=int(key.key_id), keyLimit=key.data_limit)
-    #     user.Protocol = "ShadowSocks"
-    #     user.serverType = "Outline"
-    #     key = key.access_url.split("#")[0] + "#PROXYM1TY"
+            key = client.sub_key
     user: User = await UsersDatabase.update_user(user=user, change={})
     totalGB = user.xclient.totalGB / 1024**3 if user.xclient else user.outline_client.keyLimit / 1000**3
     answer = f"""✅ Готово! Ваши данные для подключения:
@@ -329,10 +322,11 @@ async def handle_key_payment_confirmation(message: Message, state: FSMContext):
 📡 <b>Протокол подключения</b>: {data["keyType"]}
 ⚡ <b>Скорость сети на сервере</b>: {'10 Gbit/s' if data["tariff"] == "MAX" else '100 МБ/c'}
 ⏹ <b>Ограничение</b>: {totalGB}GB
-🔑 <b>Ключ</b>: <pre><code>{user.xclient.key}</code></pre>
+🔑 <b>Ключ</b>: <blockquote><code>{key}</code></blockquote>
     """
     await state.clear()
     await message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)
+    return None
 
 
 @router.callback_query(F.data == "regain_user_access")
@@ -362,6 +356,7 @@ async def handle_regain_user_access(callback: CallbackQuery):
         await callback.message.answer(text=PAYMENT_SUCCESS(user), reply_markup=MENU_KEYBOARD_MARKUP)
     await callback.answer("")
 
+
 @router.callback_query(F.data == "get_instructions")
 async def handle_get_instructions(callback: CallbackQuery):
     await callback.answer("")
@@ -373,6 +368,7 @@ async def handle_get_instructions(callback: CallbackQuery):
         ]
     )
     await callback.message.edit_text(text=INSTRUCTIONS_TEXT, reply_markup=kb)
+
 
 @router.callback_query(F.data.startswith("user_registration_"))
 async def handle_registration(callback: CallbackQuery):
@@ -386,7 +382,8 @@ async def handle_registration(callback: CallbackQuery):
     await callback.answer(text='')
     if not u:
         if callback.from_user.username:
-            user = User(userID=callback.from_user.id, userTG=f"@{callback.from_user.username}", PaymentSum=0, PaymentDate=None,
+            subId = callback.from_user.username.replace("_", "")
+            user = User(userID=callback.from_user.id, userTG=f"@{callback.from_user.username}", PaymentSum=0, PaymentDate=None, subId=subId,
                         serverName="", serverType="None", moneyBalance=0, Protocol="None", tariff="None", who_invited=who_invited, referBonus=0)
             u = await UsersDatabase.create_user(user)
             await callback.message.answer(f"✅ Аккаунт создан!\n\n🔓 Доступ к меню открыт!", reply_markup=MENU_KEYBOARD_MARKUP)
@@ -394,9 +391,52 @@ async def handle_registration(callback: CallbackQuery):
             await callback.message.answer(f"✏ Для корректной работы бота нужен <b>username</b> в телеграмм!")
 
 
+@router.callback_query(F.data == "get_free_period")
+async def handle_free_period(callback: CallbackQuery):
+    await asyncio.sleep(1)
+    user = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
+    if user.uuid:
+        await callback.answer("🙅‍♂️ Этим можно воспользоваться <b>1 раз</b>")
+        return 0
+    else:
+        dat = date.today() + timedelta(days=4)
+        user.PaymentDate = dat
+        user.tariff = "PROMO"
+        user.PaymentSum = 55
+        user.serverName = use_PREFERRED_PAYMENT_SETTINGS()["Tariffs"]["PROMO"]["server_name"]
+        svr = None
+        epoch = datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0) - timedelta(seconds=time.timezone)
+        for server in use_XSERVERS():
+            if server.name == user.serverName:
+                svr = server
+                break
+        for inb in svr.inbounds:
+            if inb.protocol == "vless":
+                limitIp = 2
+                delta = timedelta(hours=15) if time.timezone == 0 else timedelta(hours=20)
+                expiryTime = (datetime(dat.year, dat.month, dat.day) - epoch + delta).total_seconds() * 1000
+                client: XClient = await inb.add_client(email=callback.from_user.username, tgId=callback.from_user.id,
+                                                       totalBytes=500 * 1024 ** 3, expiryTime=expiryTime, limitIp=limitIp, subId=user.subId)
+                user.xclient = client
+                user.Protocol = 'VLESS'
+                user.serverType = "XSERVER"
+                user.uuid = client.uuid
+                key = client.sub_key
+        user: User = await UsersDatabase.update_user(user=user, change={})
+        totalGB = user.xclient.totalGB / 1024 ** 3 if user.xclient else user.outline_client.keyLimit / 1000 ** 3
+        answer = f"""✅ Готово! Ваши данные для подключения:
+🌐 <b>Сервер</b>: {svr.name}
+🏳 <b>Локация</b>: {svr.location}
+📡 <b>Протокол подключения</b>: VLESS
+⚡ <b>Скорость сети на сервере</b>: 100 МБ/c
+⏹ <b>Ограничение</b>: {totalGB}GB
+🔑 <b>Ключ</b>: <blockquote><code>{key}</code></blockquote>"""
+        await callback.message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)
+    return 0
+
+
 @router.callback_query(F.data == "xclient_vpn_usage")
 async def handle_xclient_vpn_usage(callback: CallbackQuery):
-    await callback.answer(text='')
     user = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
     d = await user.xclient.get_server_and_inbound(servers=use_XSERVERS())
     server: XServer = d["server"]
@@ -414,24 +454,66 @@ async def handle_xclient_vpn_usage(callback: CallbackQuery):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="↩ Назад", callback_data="back_to_menu")]
     ])
+    await callback.answer(text='')
     await callback.message.edit_text(text=answer, reply_markup=keyboard)
 
 @router.callback_query(F.data == "view_user_key")
 async def handle_vpn_key(callback: CallbackQuery):
-    await callback.answer(text='')
     user = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
+    sub_key = await user.xclient.get_sub_key(use_XSERVERS())
     if user.xclient:
-        key = await user.xclient.get_key(servers=use_XSERVERS())
+        key = await user.xclient.get_key(use_XSERVERS())
     else:
         key = user.outline_client.key
     answer = f"""
 🔑 <b>Твой ключ</b>:
-<pre><code>{key}</code></pre>
+📋 Нажми на ключ, чтобы скопировать!
+🔗 <b>sub-ключ</b>:
+<blockquote expandable><code>{sub_key}</code></blockquote>
+🗿 <b>Обычный ключ</b>:
+<blockquote expandable><code>{key}</code></blockquote>
 """
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔃 Обновить имя", callback_data="update_client_subId")],
         [InlineKeyboardButton(text="↩ Назад", callback_data="back_to_menu")]
     ])
+    await callback.answer(text='')
     await callback.message.edit_text(text=answer, reply_markup=keyboard)
+
+
+
+@router.callback_query(F.data == "update_client_subId")
+async def handle_update_client_subId(callback: CallbackQuery):
+    subId = callback.from_user.username.replace("_", "")
+    user: User = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
+    if user.subId == subId:
+        await callback.answer("😐 Имя уже совпадает")
+        return None
+    else:
+        user.change("subId", subId)
+        user.xclient.email = callback.from_user.username
+        await UsersDatabase.update_user(user)
+        d: dict[str: XServer, str: Inbound] = user.xclient.get_server_and_inbound(servers=XSERVERS)
+        await d["inbound"].update_client(client=user.xclient)
+        sub_key = await user.xclient.get_sub_key(use_XSERVERS())
+        key = await user.xclient.get_key(use_XSERVERS())
+        answer = f"""
+🔑 <b>Твой ключ</b>:
+📋 Нажми на ключ, чтобы скопировать!
+🔗 <b>sub-ключ</b>:
+<blockquote expandable><code>{sub_key}</code></blockquote>
+🗿 <b>Обычный ключ</b>:
+<blockquote expandable><code>{key}</code></blockquote>
+"""
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔃 Обновить имя", callback_data="update_client_subId")],
+            [InlineKeyboardButton(text="↩ Назад", callback_data="back_to_menu")]
+        ])
+        await callback.answer("✅ Обновлено успешно!")
+        await callback.message.edit_text(text=answer, reply_markup=keyboard)
+    return None
+
+
 
 
 

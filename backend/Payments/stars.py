@@ -15,7 +15,7 @@ async def process_pre_checkout(event: PreCheckoutQuery):
     await event.answer(True)
     for adm in ADMINS:
         print(f"[INFO] TRYING TO SEND !!!PreCheckout!!! MESSAGE TO ADMIN {adm}")
-        await event.bot.send_message(chat_id=adm, text=NEW_PRE_PAYMENT_ADMIN_REPLY(name=event.from_user.username, currency=event.currency, sum=event.total_amount))
+        await event.bot.send_message(chat_id=adm, text=NEW_PRE_PAYMENT_ADMIN_REPLY(name=event.from_user.username, currency=event.currency, sum=event.total_amount, ID=event.from_user.id))
 
 @router.message(F.successful_payment)
 async def handle_xtr_payment(message: Message):

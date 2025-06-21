@@ -181,6 +181,7 @@ async def menu(message: Message, *args, **kwargs):
             else:
                 if Available_Tariffs:
                     kb_l = [
+                        [InlineKeyboardButton(text="🔥 Бесплатный период!", callback_data="get_free_period")],
                         [InlineKeyboardButton(text="🔓 Купить ключ", callback_data="buy_key")],
                         [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")]
                     ]
