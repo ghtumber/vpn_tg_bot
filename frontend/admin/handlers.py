@@ -320,7 +320,8 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
 🛰 <b>Сервер</b>: {data["server"].name}
 ⏹ <b>Трафик</b>: {round((client_traffics["up"] + client_traffics["down"]) / 1024**3, 2)}/{xclient.totalGB / 1024**3}GB
 🕓 <b>Истекает</b>: {exprDate if xclient.expiryTime else "♾ Вечный"}
-🔑 <b>Ключ</b>: <pre><code>{await xclient.get_key(use_XSERVERS())}</code></pre>
+🔑 <b>Sub-Ключ</b>: <pre><code>{xclient.sub_key}</code></pre>
+🔑 <b>Ключ</b>: <pre><code>{xclient.key}</code></pre>
 <span class="tg-spoiler">|api|{data["server"].name}:{inbound.id}:{xclient.uuid if xclient.uuid else xclient.email}|api|</span>
 """
     if xclient.enable:

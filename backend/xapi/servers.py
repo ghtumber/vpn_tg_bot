@@ -110,11 +110,13 @@ class XServer:
                     if client_dict["id"] == identifier:
                         # print(f"get_client_info() -> {client_dict}")
                         client = XClient.create_from_dict(dct=client_dict)
+                        client.key = inb.form_key({"clients": [client.for_api()]})
                         client.sub_key = f"http://{self.ip}:2096{self.SUB_URL}{client.subId}"
                         return client
                 elif "password" in client_dict.keys():
                     if client_dict["email"] == identifier:
                         client = XClient.create_from_dict(dct=client_dict)
+                        client.key = inb.form_key({"clients": [client.for_api()]})
                         client.sub_key = f"http://{self.ip}:2096{self.SUB_URL}{client.subId}"
                         return client
         return None
@@ -127,7 +129,11 @@ class XServer:
             clients = inb.settings["clients"]
             print(f"{clients=}")
             for client in clients:
-                res.append(XClient.create_from_dict(dct=client))
+                if "subId" not in client.keys():
+                    print(f"[ERROR] NO SubId {client["email"]} - {client}")
+                    raise Exception(f"[ERROR] NO SubId {client['email']}")
+                else:
+                    res.append(XClient.create_from_dict(dct=client))
         return res if res else None
 
     async def get_client_ips(self, email: str):
