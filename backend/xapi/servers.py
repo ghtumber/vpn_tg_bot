@@ -130,7 +130,7 @@ class XServer:
             print(f"{clients=}")
             for client in clients:
                 if "subId" not in client.keys():
-                    print(f"[ERROR] NO SubId {client["email"]} - {client}")
+                    print(f"[ERROR] NO SubId {client['email']} - {client}")
                     raise Exception(f"[ERROR] NO SubId {client['email']}")
                 else:
                     res.append(XClient.create_from_dict(dct=client))
