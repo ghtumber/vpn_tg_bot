@@ -341,7 +341,7 @@ async def handle_regain_user_access(callback: CallbackQuery):
             ])
             await callback.message.answer(text="💰 <b>Пополните</b> баланс.", reply_markup=kb)
             return 0
-        data = await user.xclient.get_server_and_inbound(use_XSERVERS())
+        data = await user.get_server_and_inbound(use_XSERVERS())
         user.change("moneyBalance", user.moneyBalance - user.PaymentSum)
         new_date = add_months(user.PaymentDate, 1)
         epoch = datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0) - timedelta(seconds=time.timezone)
@@ -351,7 +351,7 @@ async def handle_regain_user_access(callback: CallbackQuery):
         await data["inbound"].reset_client_traffic(user.xclient.for_api())
         user.change("PaymentDate", new_date)
         print(f"{use_XSERVERS()=}")
-        await user.xclient.get_key(use_XSERVERS())
+        await user.get_key(use_XSERVERS())
         await UsersDatabase.update_user(user)
         await callback.message.answer(text=PAYMENT_SUCCESS(user), reply_markup=MENU_KEYBOARD_MARKUP)
     await callback.answer("")
@@ -438,7 +438,8 @@ async def handle_free_period(callback: CallbackQuery):
 @router.callback_query(F.data == "xclient_vpn_usage")
 async def handle_xclient_vpn_usage(callback: CallbackQuery):
     user = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
-    d = await user.xclient.get_server_and_inbound(servers=use_XSERVERS())
+    print(f"vpn_usage func -> {user}")
+    d = await user.get_server_and_inbound(servers=use_XSERVERS())
     server: XServer = d["server"]
     if user.Protocol == "VLESS":
         keyInfo = await server.get_client_traffics(uuid=user.uuid)
@@ -460,9 +461,9 @@ async def handle_xclient_vpn_usage(callback: CallbackQuery):
 @router.callback_query(F.data == "view_user_key")
 async def handle_vpn_key(callback: CallbackQuery):
     user = await UsersDatabase.get_user_by(ID=str(callback.from_user.id))
-    sub_key = await user.xclient.get_sub_key(use_XSERVERS())
+    sub_key = await user.get_sub_key(use_XSERVERS())
     if user.xclient:
-        key = await user.xclient.get_key(use_XSERVERS())
+        key = await user.get_key(use_XSERVERS())
     else:
         key = user.outline_client.key
     answer = f"""
@@ -493,10 +494,10 @@ async def handle_update_client_subId(callback: CallbackQuery):
         user.change("subId", subId)
         user.xclient.email = callback.from_user.username
         await UsersDatabase.update_user(user)
-        d: dict[str: XServer, str: Inbound] = user.xclient.get_server_and_inbound(servers=XSERVERS)
+        d: dict[str: XServer, str: Inbound] = user.get_server_and_inbound(servers=XSERVERS)
         await d["inbound"].update_client(client=user.xclient)
-        sub_key = await user.xclient.get_sub_key(use_XSERVERS())
-        key = await user.xclient.get_key(use_XSERVERS())
+        sub_key = await user.get_sub_key(use_XSERVERS())
+        key = await user.get_key(use_XSERVERS())
         answer = f"""
 🔑 <b>Твой ключ</b>:
 📋 Нажми на ключ, чтобы скопировать!

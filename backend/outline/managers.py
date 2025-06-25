@@ -1,5 +1,4 @@
 from outline_vpn.outline_vpn import OutlineVPN, OutlineKey, OutlineServerErrorException
-from globals import OUTLINE_API_URL_2, OUTLINE_CERT_SHA256_2
 
 
 class OutlineManager:

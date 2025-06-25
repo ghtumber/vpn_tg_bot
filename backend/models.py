@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from types import NoneType
 
 
+
 @dataclass()
 class XClient:
     email: str
@@ -19,37 +20,6 @@ class XClient:
     uuid: str = ""
     key: str = ""
     sub_key: str = ""
-
-    async def get_key(self, servers: list) -> str:
-        if self.key:
-            return self.key
-        d = await self.get_server_and_inbound(servers=servers)
-        self.key = d["inbound"].form_key({"clients": [self.for_api()]})
-        return self.key
-
-    async def get_sub_key(self, servers: list) -> str:
-        if self.sub_key:
-            return self.sub_key
-        d = await self.get_server_and_inbound(servers=servers)
-        self.sub_key = f"http://{d['server'].ip}:2096{d['server'].SUB_URL}{self.subId}"
-        return self.sub_key
-
-    async def get_server_and_inbound(self, servers: list) -> dict:
-        """Returns dict {`server`: s, `inbound`: inb}"""
-        for s in servers:
-            await s.get_inbounds()
-            for inb in s.inbounds:
-                #print(f"Checking {inb.settings}")
-                for cl in inb.settings["clients"]:
-                    #print(f"finding {self.email=} {self.uuid=} {cl}")
-                    if "password" in cl.keys():
-                        if cl["password"] == self.password:
-                            return {"server": s, "inbound": inb}
-                    elif "id" in cl.keys():
-                        #print(f"finding {cl} {self.uuid=}")
-                        if cl["id"] == self.uuid:
-                            return {"server": s, "inbound": inb}
-        return None
 
     @staticmethod
     def create_from_dict(dct):
@@ -94,6 +64,7 @@ class XClient:
         return {"id": self.email, "email": self.email, "enable": self.enable, "expiryTime": self.expiryTime, "password": self.password, "flow": "",
                 "limitIp": self.limitIp, "reset": self.reset, "tgId": self.tgId, "totalGB": self.totalGB, "subId": self.subId}
 
+# Deprecated
 @dataclass()
 class OutlineClient:
     keyID: int
@@ -127,6 +98,30 @@ class User:
         else:
             raise Exception(f"PaymentDate is not a [datetime.date or None] {type(PaymentDate)}")
         self.serverName = serverName
+
+    async def get_server_and_inbound(self, servers: list) -> dict:
+        """Returns dict {`server`: s, `inbound`: inb}"""
+        for s in servers:
+            if s.name == self.serverName:
+                await s.get_inbounds()
+                for inb in s.inbounds:
+                    if inb.protocol.lower() == self.Protocol.lower():
+                        return {'server': s, 'inbound': inb}
+        return None
+
+    async def get_key(self, servers: list) -> str:
+        if self.xclient.key:
+            return self.xclient.key
+        d = await self.get_server_and_inbound(servers=servers)
+        self.xclient.key = d["inbound"].form_key({"clients": [self.xclient.for_api()]})
+        return self.xclient.key
+
+    async def get_sub_key(self, servers: list) -> str:
+        if self.xclient.sub_key:
+            return self.xclient.sub_key
+        d = await self.get_server_and_inbound(servers=servers)
+        self.xclient.sub_key = f"http://{d['server'].ip}:2096{d['server'].SUB_URL}{self.subId}"
+        return self.xclient.sub_key
 
     def change(self, field, new_value):
         match field:
@@ -176,5 +171,6 @@ class User:
 {self.uuid=}
 {self.serverName=}
 {self.serverType=}
+{self.Protocol=}
 """
         return value

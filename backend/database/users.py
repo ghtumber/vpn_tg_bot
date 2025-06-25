@@ -51,6 +51,7 @@ class UsersDatabase:
                             server = None
                         if server:
                             xClient = await server.get_client_info(result["uuid"])
+                            xClient.key = result["key"]
                     res.append(User(id=int(result["id"]), userID=int(result["userID"]), userTG=result["userTG"], outline_client=outlineClient,
                             xclient=xClient, PaymentSum=int(result["PaymentSum"]), PaymentDate=PaymentDate, tariff=result["tariff"],
                             serverName=result["serverName"], uuid=result["uuid"], serverType=result["serverType"]["value"], subId=result["subId"],
@@ -113,6 +114,7 @@ class UsersDatabase:
                             xClient: XClient = await server.get_client_info(u["userTG"][1:])
                         elif u["Protocol"]["value"] == "VLESS":
                             xClient: XClient = await server.get_client_info(UUID)
+                        xClient.key = u["key"]
                 return User(id=int(u["id"]), userID=int(u["userID"]), userTG=u["userTG"], outline_client=outlineClient, xclient=xClient, PaymentSum=int(u["PaymentSum"]),
                             PaymentDate=PaymentDate, serverName=u["serverName"], uuid=UUID, serverType=serverType["value"], tariff=u["tariff"], subId=u["subId"],
                             Protocol=u["Protocol"]["value"], moneyBalance=float(u["moneyBalance"]), who_invited=u["who_invited"], referBonus=u["referBonus"], UserReliability=bool(u["UserReliability"]))
@@ -208,7 +210,7 @@ class UsersDatabase:
             key = user.outline_client.key
             keyLimit = user.outline_client.keyLimit
         elif user.xclient:
-            key = user.xclient.key
+            key = await user.get_key(servers=use_XSERVERS())
             keyLimit = user.xclient.totalGB
         else:
             key = ""

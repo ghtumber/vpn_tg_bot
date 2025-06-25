@@ -6,10 +6,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 from backend.xapi.servers import XServer, Inbound
-from frontend.admin.handlers import CANCEL_KB, handle_cancel
-from backend.models import User, XClient
+from frontend.admin.handlers import CANCEL_KB
 from frontend.notifications.models import GlobalNotification
 from datetime import date, timedelta
 from frontend.replys import *
@@ -47,7 +47,7 @@ async def payment_system():
                 # print(f"[INFO] {user.xclient=} {datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000)}")
                 # Payment system
                 if date.today() == datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000).date():
-                    data = await user.xclient.get_server_and_inbound(use_XSERVERS())
+                    data = await user.get_server_and_inbound(servers=use_XSERVERS())
                     inbound: Inbound = data["inbound"]
                     if user.moneyBalance >= user.PaymentSum:
                         print(f"[PAYMENT PROCEED] {user.userTG} ({user.moneyBalance}) - {user.PaymentSum}")
@@ -59,13 +59,13 @@ async def payment_system():
                             "expiryTime": (datetime.datetime(new_date.year, new_date.month, new_date.day) - epoch + delta).total_seconds() * 1000})
                         await inbound.reset_client_traffic(user.xclient.for_api())
                         user.change("PaymentDate", new_date)
-                        await user.xclient.get_key(use_XSERVERS())
+                        await user.get_key(use_XSERVERS())
                         await UsersDatabase.update_user(user)
                         await bot.send_message(chat_id=user.userID, text=PAYMENT_SUCCESS(user))
                         continue
                     else:
                         user.xclient.enable = False
-                        await user.xclient.get_key(use_XSERVERS())
+                        await user.get_key(use_XSERVERS())
                         await inbound.update_client(user.xclient, {"enable": False})
                         await UsersDatabase.update_user(user)
                         kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -175,10 +175,8 @@ async def handle_admin_send_global_notification_state_2(message: Message, state:
         success = await notif.send()
         await state.clear()
 
-tz = timedelta(seconds=time.timezone).total_seconds() // 3600
-delta = -5 if time.timezone == 0 else 0
-period_checker_scheduler.add_job(func=check_period, day_of_week='mon-sun', trigger="cron", hour=int(17+tz+delta), minute=30)
-print(f"check_period will be in {int(17+tz+delta)}")
-period_checker_scheduler.add_job(func=payment_system, day_of_week='mon-sun', trigger="cron", hour=int(19+tz+delta), minute=15)
-print(f"payment_system will be in {int(19+tz+delta)}")
+period_checker_scheduler.add_job(func=check_period, day_of_week='mon-sun', trigger=CronTrigger(hour=15, minute=0, timezone="Europe/Moscow"))
+print(f"check_period will be in 15:00 Msk")
+period_checker_scheduler.add_job(func=payment_system, day_of_week='mon-sun', trigger=CronTrigger(hour=16, minute=35, timezone="Europe/Moscow"))
+print(f"payment_system will be in 17:15 Msk")
 #period_checker_scheduler.add_job(func=payment_system, trigger="interval", minutes=1)

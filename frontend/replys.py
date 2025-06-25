@@ -132,6 +132,7 @@ NO_MONEY_LEFT =  lambda user: f"""
 💔 <b>{user.userTG}</b>!
 ⛔ <i>VPN отключён!</i>
 💰 Баланс <b>{user.moneyBalance}🌟XTR</b>
+🧾 Тариф <b>{user.PaymentSum}🌟XTR</b>
 📅 Оплата <b>{user.PaymentDate.strftime("%d.%m.%Y")}</b> просрочена!
 
 Чтобы возобновить доступ пополните баланс 👇
@@ -204,6 +205,16 @@ Trying to avoid and restart...
 BALANCE_TOPUP_INVITER_REPLY = lambda user, sum: f"""
 🤝 Бонус за реферала на сумму {sum}🌟XTR!
 💵 <b>Баланс</b>: {user.moneyBalance}🌟XTR"""
+
+KEY_UPDATE_USER_REPLY = lambda user, sub_key, key: f"""
+‼ {user.userTG}
+<b>Вам выдан новый ключ!</b>!
+📋 Нажми на ключ, чтобы скопировать!
+🔗 <b>sub-ключ</b>:
+<blockquote expandable><code>{sub_key}</code></blockquote>
+🗿 <b>Обычный ключ</b>:
+<blockquote expandable><code>{key}</code></blockquote>
+"""
 
 BALANCE_TOPUP_USER_REPLY = lambda user, summ: f"""
 ✅ <b>Пополнение баланса</b> на сумму {summ}🌟XTR!
