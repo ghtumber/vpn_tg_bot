@@ -90,6 +90,7 @@ EXHAUSTED_USER_GREETING_REPLY = lambda user: f"""
 📋 Это <b>главное меню Proxym1ty</b>
 
 🔴 <b>Статус</b>: Отключен
+🧾 <b>Нужно оплатить</b>: {user.PaymentSum}🌟XTR
 💵 <b>Баланс</b>: {user.moneyBalance}🌟XTR
 
 ⚡ Чтобы возобновить доступ, просто выбери нужный пункт.
@@ -101,6 +102,7 @@ SERVER_ERROR_USER_GREETING_REPLY = lambda user: f"""
 📋 Это <b>главное меню Proxym1ty</b>
 
 🔴 Сейчас ваш сервер <b>Недоступен</b>
+🌐 <b>Сервер</b>: <pre>{user.serverName}</pre>
 💵 <b>Баланс</b>: {user.moneyBalance}🌟XTR
 
 Мы уже работаем над решением проблемы.
