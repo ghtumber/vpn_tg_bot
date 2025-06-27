@@ -175,8 +175,15 @@ async def handle_admin_send_global_notification_state_2(message: Message, state:
         success = await notif.send()
         await state.clear()
 
+## TODO remove this test code
+async def test_time_management():
+    await bot.send_message(chat_id="6476836355", text=f"Test at 10am Msk")
+
 period_checker_scheduler.add_job(func=check_period, day_of_week='mon-sun', trigger=CronTrigger(hour=15, minute=0, timezone="Europe/Moscow"))
 print(f"check_period will be in 15:00 Msk")
 period_checker_scheduler.add_job(func=payment_system, day_of_week='mon-sun', trigger=CronTrigger(hour=16, minute=35, timezone="Europe/Moscow"))
 print(f"payment_system will be in 17:15 Msk")
+
+## TODO this test code too
+period_checker_scheduler.add_job(func=test_time_management, day_of_week="mon-sun", trigger=CronTrigger(hour=10, minute=0, timezone="Europe/Moscow"))
 #period_checker_scheduler.add_job(func=payment_system, trigger="interval", minutes=1)
