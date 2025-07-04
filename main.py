@@ -25,7 +25,7 @@ dp = Dispatcher()
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message, command: CommandObject):
-    user_resp = await UsersDatabase.get_user_by(TG="@" + message.from_user.username)
+    user_resp = await UsersDatabase.get_user_by(TG="@" + str(message.from_user.username if message.from_user.username else ""))
     if user_resp:
         await message.answer(REPLY_REGISTRATION(who_invited=False), reply_markup=MENU_KEYBOARD_MARKUP)
     else:

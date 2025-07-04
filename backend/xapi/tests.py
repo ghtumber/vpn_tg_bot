@@ -258,7 +258,7 @@ class Inbound:
                 url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/{self.id}/delClient/{client_id}",
                 ssl=ssl_context, cookies=self.server.login_cookies)
             if resp.status == 200:
-                return True
+                return resp
         raise Exception(f"[{resp.status}]REMOVING client exception! Check: URI, COOKIES")
 
     def form_key(self, client_data: dict[str: list[dict]]):
@@ -285,9 +285,9 @@ async def GET_XSERVERS() -> list[XServer]:
 
 
 async def main():
-    server = XServer(ip="94.159.100.60", port=59999, path="PROXY", login=LOGIN, password=PASSWORD)
+    server = XServer(ip="94.159.98.138", port=59999, path="PROXY", login=LOGIN, password=PASSWORD)
     await server.get_inbounds()
-    inb: Inbound = server.inbounds[1]
+    inb: Inbound = server.inbounds[0]
     print(inb.protocol)
     # client = Client.create_from_dict(inb.settings["clients"][1])
     # traffic = await server.get_client_traffics(uuid=client.id)

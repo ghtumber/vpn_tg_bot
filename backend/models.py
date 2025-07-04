@@ -86,7 +86,7 @@ class User:
         self.serverType = serverType
         self.userID = userID
         self.subId = subId
-        if re.fullmatch(r'@[a-zA-Z0-9_]+', r''.join(userTG)):
+        if re.fullmatch(r'[@]*[a-zA-Z0-9_]+', r''.join(userTG)):
             self.userTG = userTG
         else:
             raise Exception("UserTG Regular Error")

@@ -29,7 +29,6 @@ async def handle_user_cancel(message: Message):
             [InlineKeyboardButton(text="Да", callback_data="menu"), InlineKeyboardButton(text="Нет", callback_data="cancel_of_cancel")],
         ]
     )
-    print("Nihuya HERE")
     await message.answer("Отмена?", reply_markup=kb)
 
 
@@ -37,6 +36,9 @@ class OldRegistration(StatesGroup):
     key = State()
     payment_date = State()
     payment_sum = State()
+
+class RegistrationNoNickname(StatesGroup):
+    nickname = State()
 
 class KeyPayment(StatesGroup):
     tariff = State()
@@ -371,7 +373,7 @@ async def handle_get_instructions(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("user_registration_"))
-async def handle_registration(callback: CallbackQuery):
+async def handle_registration(callback: CallbackQuery, state: FSMContext):
     await asyncio.sleep(2)
     who_invited = callback.data.split("_")[2]
     if who_invited != "None":
@@ -388,7 +390,25 @@ async def handle_registration(callback: CallbackQuery):
             u = await UsersDatabase.create_user(user)
             await callback.message.answer(f"✅ Аккаунт создан!\n\n🔓 Доступ к меню открыт!", reply_markup=MENU_KEYBOARD_MARKUP)
         else:
-            await callback.message.answer(f"✏ Для корректной работы бота нужен <b>username</b> в телеграмм!")
+            await callback.message.answer(f"✏ Для корректной работы бота нужен <b>username</b>!\n🤔Как к вам обращатся?\n(можно использовать только латинский алфавит)")
+            await state.set_state(RegistrationNoNickname.nickname)
+            await state.update_data(who_invited=who_invited)
+
+
+@router.message(RegistrationNoNickname.nickname)
+async def handle_registration_nickname(message: Message, state: FSMContext):
+    if not re.fullmatch("[A-Za-z0-9_]+", message.text):
+        await message.answer("❌ Nickname должен состоять только из <b>латиницы и символа '_'</b>.")
+        return 0
+    data = await state.get_data()
+    subId = message.text.replace("_", "")
+    user = User(userID=message.from_user.id, userTG=f"{message.text}", PaymentSum=0, PaymentDate=None,
+                subId=subId,
+                serverName="", serverType="None", moneyBalance=0, Protocol="None", tariff="None",
+                who_invited=data["who_invited"], referBonus=0)
+    u = await UsersDatabase.create_user(user)
+    await state.clear()
+    await message.answer(f"✅ Аккаунт создан!\n\n🔓 Доступ к меню открыт!", reply_markup=MENU_KEYBOARD_MARKUP)
 
 
 @router.callback_query(F.data == "get_free_period")
@@ -415,7 +435,7 @@ async def handle_free_period(callback: CallbackQuery):
                 limitIp = 2
                 delta = timedelta(hours=15) if time.timezone == 0 else timedelta(hours=20)
                 expiryTime = (datetime(dat.year, dat.month, dat.day) - epoch + delta).total_seconds() * 1000
-                client: XClient = await inb.add_client(email=callback.from_user.username, tgId=callback.from_user.id,
+                client: XClient = await inb.add_client(email=user.userTG.replace("@", ""), tgId=callback.from_user.id,
                                                        totalBytes=500 * 1024 ** 3, expiryTime=expiryTime, limitIp=limitIp, subId=user.subId)
                 user.xclient = client
                 user.Protocol = 'VLESS'
@@ -474,12 +494,15 @@ async def handle_vpn_key(callback: CallbackQuery):
 🗿 <b>Обычный ключ</b>:
 <blockquote expandable><code>{key}</code></blockquote>
 """
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔃 Обновить имя", callback_data="update_client_subId")],
+    keyboard = [
         [InlineKeyboardButton(text="↩ Назад", callback_data="back_to_menu")]
-    ])
+    ]
+    if callback.from_user.username:
+        keyboard.append([InlineKeyboardButton(text="🔃 Обновить имя", callback_data="update_client_subId")])
+        keyboard = keyboard[::-1]
+    kb = InlineKeyboardMarkup(inline_keyboard=keyboard)
     await callback.answer(text='')
-    await callback.message.edit_text(text=answer, reply_markup=keyboard)
+    await callback.message.edit_text(text=answer, reply_markup=kb)
 
 
 
