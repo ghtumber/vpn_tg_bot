@@ -120,7 +120,7 @@ class User:
         if self.xclient.sub_key:
             return self.xclient.sub_key
         d = await self.get_server_and_inbound(servers=servers)
-        self.xclient.sub_key = f"http://{d['server'].ip}:2096{d['server'].SUB_URL}{self.subId}"
+        self.xclient.sub_key = f"http://{d['server'].ip}:80{d['server'].SUB_URL}{self.subId}"
         return self.xclient.sub_key
 
     def change(self, field, new_value):
