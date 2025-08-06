@@ -111,13 +111,13 @@ class XServer:
                         # print(f"get_client_info() -> {client_dict}")
                         client = XClient.create_from_dict(dct=client_dict)
                         client.key = inb.form_key({"clients": [client.for_api()]})
-                        client.sub_key = f"http://{self.ip}:2096{self.SUB_URL}{client.subId}"
+                        client.sub_key = f"http://{self.ip}:80{self.SUB_URL}{client.subId}"
                         return client
                 elif "password" in client_dict.keys():
                     if client_dict["email"] == identifier:
                         client = XClient.create_from_dict(dct=client_dict)
                         client.key = inb.form_key({"clients": [client.for_api()]})
-                        client.sub_key = f"http://{self.ip}:2096{self.SUB_URL}{client.subId}"
+                        client.sub_key = f"http://{self.ip}:80{self.SUB_URL}{client.subId}"
                         return client
         return None
 
