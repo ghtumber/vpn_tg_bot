@@ -342,7 +342,7 @@ async def GET_XSERVERS() -> (list[XServer], list[XServer]):
     XSERVERS = [XServer(ip="94.159.100.60", port=59999, path="PROXY", tariff="PROMO"),
                 XServer(ip="94.159.98.138", port=59999, path="PROXY", tariff="PROMO"),
                 #XServer(ip="89.39.121.125", port=59999, path="PROXY", tariff="MAX"),
-                XServer(ip="85.192.24.16", port=59999, path="PROXY", tariff="MAX"),
+                XServer(ip="85.192.24.16", port=8080, path="PROXY", tariff="MAX"),
                 ]
     removed = []
     i = 0
