@@ -43,7 +43,7 @@ class UserKeyUpdating(StatesGroup):
     confirmation = State()
 
 #-----------------------------------------------UserDB-------------------------------------------
-@router.callback_query((F.data == "admin_get_user_info") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_get_user_info") & (F.message.from_user.pk_id in ADMINS))
 async def handle_get_user_info(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
     page = 1
@@ -133,7 +133,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
     await message.answer(text=answer, reply_markup=kb)
 
 
-@router.callback_query((F.data == "admin_updateUserExpriryDate") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_updateUserExpriryDate") & (F.message.from_user.pk_id in ADMINS))
 async def handle_admin_updateUserExpriryDate(callback: CallbackQuery, state: FSMContext):
     prev_text = callback.message.text
     userID = prev_text.split("|api|")[1]
@@ -191,15 +191,15 @@ async def handle_xserver_updateUserExpriryDate_confirmation(message: Message, st
     new_date = data["new_value"]
     inbound: Inbound = data["inbound"]
     for cl in inbound.settings["clients"]:
-        if "id" in cl.keys() and cl["id"] == data["user"].uuid:
+        if "pk_id" in cl.keys() and cl["pk_id"] == data["user"].uuid:
             client = XClient.create_from_dict(cl)
-        elif "id" not in cl.keys() and cl["email"] == data["user"].uuid:
+        elif "pk_id" not in cl.keys() and cl["email"] == data["user"].uuid:
             client = XClient.create_from_dict(cl)
     if client:
         epoch = datetime.utcfromtimestamp(0)
         delta = timedelta(hours=14) if time.timezone == 0 else timedelta(hours=19)
-        success = await inbound.update_client(client, {
-            "expiryTime": (datetime(new_date.year, new_date.month, new_date.day) - epoch + delta).total_seconds() * 1000})
+        client.expiryTime = int((datetime(new_date.year, new_date.month, new_date.day) - epoch + delta).total_seconds() * 1000)
+        success = await inbound.update_xclient(client)
         data["user"].PaymentDate = datetime(new_date.year, new_date.month, new_date.day)
         user: User = await UsersDatabase.update_user(user=data["user"], change={})
         await state.clear()
@@ -208,7 +208,7 @@ async def handle_xserver_updateUserExpriryDate_confirmation(message: Message, st
             answer = f"""
 ✅ <b>Клиент изменён</b>
 👤 <b>Имя</b>: {client.email}
-🆔 <b>UUID</b>: {user.uuid}
+🆔 <b>UUID</b>: {client.uuid}
 🛰 <b>Сервер</b>: {inbound.server.name}
 🕓 <b>Истекает</b>: {user.PaymentDate.strftime('%A %d.%m.%Y')}
 📡 <b>Протокол</b>: {"ShadowSocks" if inbound.protocol == "shadowsocks" else "VLESS"}
@@ -218,7 +218,7 @@ async def handle_xserver_updateUserExpriryDate_confirmation(message: Message, st
     await message.answer(text="‼ Ошибка!\nState очищен.\n" + f"{client=}", reply_markup=MENU_KEYBOARD_MARKUP)
 
 
-@router.callback_query((F.data == "admin_change_user_balance") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_change_user_balance") & (F.message.from_user.pk_id in ADMINS))
 async def handle_admin_change_user_balance(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
     prev_text = callback.message.text
@@ -276,7 +276,7 @@ async def handle_admin_change_user_balance_confirmation(message: Message, state:
     await message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)
 
 
-@router.callback_query((F.data == "admin_change_user_key") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_change_user_key") & (F.message.from_user.pk_id in ADMINS))
 async def handle_admin_change_user_key(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
     prev_text = callback.message.text
@@ -333,14 +333,14 @@ async def handle_admin_change_user_balance_confirmation(message: Message, state:
     user.uuid = data["new_uuid"]
     user.serverName = "XServer@" + data["new_server"]
     d = await user.get_server_and_inbound(use_XSERVERS())
-    user.xclient = await d["server"].get_client_info(user.uuid)
+    user.xclient = await d["server"].get_xclient(user.uuid)
     user.subId = user.xclient.subId
     user: User = await UsersDatabase.update_user(user=user, change={})
     answer = f"""
 ✅ Данные изменены!
 🔗 <b>TG</b>: {user.userTG}
 🆔 <b>New uuid</b>: {user.uuid}
-🆔 <b>New sub-id</b>: {user.subId}
+🆔 <b>New sub-pk_id</b>: {user.subId}
 🛰 <b>New server</b>: {user.serverName}
 🔑 <b>New Key</b>: {await user.get_key(use_XSERVERS())}
 """

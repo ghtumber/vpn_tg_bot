@@ -58,7 +58,7 @@ class TariffManagingState(StatesGroup):
 
 # PREFERRED_PAYMENT_SETTINGS = {"server_name": "XServer@94.159.100.60", "keyType": "VLESS"}
 
-@router.callback_query((F.data == "admin_manage_payment_defaults") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_manage_payment_defaults") & (F.message.from_user.pk_id in ADMINS))
 async def handle_admin_manage_payment_defaults(callback: CallbackQuery):
     await callback.answer("")
     keyboard = InlineKeyboardMarkup(
@@ -73,7 +73,7 @@ async def handle_admin_manage_payment_defaults(callback: CallbackQuery):
     )
     tars = use_PREFERRED_PAYMENT_SETTINGS()["Tariffs"]
     xtr_ex_rate = use_PREFERRED_PAYMENT_SETTINGS()["XTR_exchange_rate"]
-    servers = ", ".join([tars[t_k]["server_name"] for t_k in tars.keys()])
+    servers = ", ".join([tars[t_k]["server_ip"] for t_k in tars.keys()])
     protocols = ", ".join([tars[t_k]["keyType"] for t_k in tars.keys()])
     coasts = ", ".join([str(tars[t_k]["coast"]) for t_k in tars.keys()])
     await callback.message.answer(ADMIN_PAYMENTS_MANAGER_REPLY(default_coast=coasts, xtr_rate=xtr_ex_rate, default_server=servers,
@@ -83,7 +83,7 @@ async def handle_admin_manage_payment_defaults(callback: CallbackQuery):
 
 
 #-------------------------------------------Tariffs editing---------------------------------------------------------
-@router.callback_query((F.data == "admin_change_payment_defaults_tariffs") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_change_payment_defaults_tariffs") & (F.message.from_user.pk_id in ADMINS))
 async def handle_admin_change_payment_defaults_tariffs(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
     answer = "➡ Выбери действие:"
@@ -161,7 +161,7 @@ async def handle_admin_change_payment_defaults_tariffs_confirmation(callback: Ca
 
 
 #-------------------------------------------Server editing---------------------------------------------------------
-@router.callback_query((F.data == "admin_change_payment_defaults_server") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_change_payment_defaults_server") & (F.message.from_user.pk_id in ADMINS))
 async def handle_admin_change_payment_defaults_server(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
     kb_l = []
@@ -225,7 +225,7 @@ async def handle_admin_change_payment_defaults_server_confirmation(message: Mess
 
 
 #-------------------------------------------Protocol editing---------------------------------------------------------
-@router.callback_query((F.data == "admin_change_payment_defaults_protocol") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_change_payment_defaults_protocol") & (F.message.from_user.pk_id in ADMINS))
 async def handle_admin_change_payment_defaults_server(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
     kb_l = []
@@ -291,7 +291,7 @@ async def handle_admin_change_payment_defaults_protocol_confirmation(message: Me
 #-------------------------------------------Coast editing---------------------------------------------------------
 
 ### XTR RATE -----------------------------------------------------------------------------------------------------
-@router.callback_query((F.data == "admin_change_payment_defaults_xtr_rate") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_change_payment_defaults_xtr_rate") & (F.message.from_user.pk_id in ADMINS))
 async def handle_admin_change_payment_defaults_xtr_rate(callback: CallbackQuery, state: FSMContext):
     await callback.answer(f"Now rate is {use_PREFERRED_PAYMENT_SETTINGS()['XTR_exchange_rate']}")
     answer = "💸 Какая новая цена? (ex. 1.8)"
@@ -331,10 +331,10 @@ async def handle_admin_change_payment_defaults_xtr_rate_confirmation(message: Me
 
 ### Refund system ------------------------------------------------------------------------------------------------
 
-@router.callback_query((F.data == "admin_create_xtr_refund") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_create_xtr_refund") & (F.message.from_user.pk_id in ADMINS))
 async def handle_admin_create_xtr_refund(callback: CallbackQuery, state: FSMContext):
     await callback.answer(f"Now rate is {use_PREFERRED_PAYMENT_SETTINGS()['XTR_exchange_rate']}")
-    answer = "👤 Какой userID и telegram charge id?\nСколько 🌟XTR участвовало?\n\n‼ Вернётся вся сумма транзакции!!!\nВычтет из баланса в БД то, что будет указано!\n\n👉 Формат ответа: <b>кол.XTR:userID:charge_id</b>"
+    answer = "👤 Какой userID и telegram charge pk_id?\nСколько 🌟XTR участвовало?\n\n‼ Вернётся вся сумма транзакции!!!\nВычтет из баланса в БД то, что будет указано!\n\n👉 Формат ответа: <b>кол.XTR:userID:charge_id</b>"
     await callback.message.answer(answer, reply_markup=CANCEL_KB)
     await state.update_data(callback=callback)
     await state.set_state(XTRRefundCreationState.userID)
@@ -371,7 +371,7 @@ async def handle_admin_create_xtr_refund_confirmation(message: Message, state: F
 
 
 
-@router.callback_query((F.data == "admin_change_payment_defaults_coast") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_change_payment_defaults_coast") & (F.message.from_user.pk_id in ADMINS))
 async def handle_admin_change_payment_defaults_server(callback: CallbackQuery, state: FSMContext):
     await callback.answer("")
     kb_l = []

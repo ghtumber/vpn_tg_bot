@@ -51,7 +51,7 @@ async def handle_donat_pay_message(websocket):
                         error = ""
                         success = False
                         if not user:
-                            user = await UsersDatabase.get_user_by(TG=f"@{name}")
+                            user = await UsersDatabase.get_user_by(tg=f"@{name}")
                         if user:
                             try:
                                 user = await UsersDatabase.update_user(user, change={"moneyBalance": user.moneyBalance + float(sum)})
@@ -85,7 +85,7 @@ async def listen_to_centrifugo(update_global_next_ws_update, restart_ws_thread=N
             async with websockets.connect(uri) as websocket:
                 client_token = get_token()
                 auth_data = {
-                    "id": 1,
+                    "pk_id": 1,
                     "params": {
                         "name": "python",
                         "token": client_token
@@ -102,7 +102,7 @@ async def listen_to_centrifugo(update_global_next_ws_update, restart_ws_thread=N
                 sub_token = get_sub_token(client=client, channel=channel)
 
                 subscribe_data = {
-                    "id": 2,
+                    "pk_id": 2,
                     "method": 1,
                     "params": {
                         "channel": channel,
@@ -116,7 +116,7 @@ async def listen_to_centrifugo(update_global_next_ws_update, restart_ws_thread=N
                 print(f"Получено init_message от DonatPAY: {init_message=}")
                 init_dict = json.loads(init_message)
 
-                # {"id":2,"result":{"expires":true,"ttl":21600}}
+                # {"pk_id":2,"result":{"expires":true,"ttl":21600}}
                 ttl = init_dict["result"]["ttl"]
                 next_update_time = datetime.now() + timedelta(seconds=ttl)
                 update_global_next_ws_update(new=next_update_time)

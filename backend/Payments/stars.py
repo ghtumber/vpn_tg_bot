@@ -20,7 +20,7 @@ async def process_pre_checkout(event: PreCheckoutQuery):
 @router.message(F.successful_payment)
 async def handle_xtr_payment(message: Message):
     payment = message.successful_payment
-    user: User = await UsersDatabase.get_user_by(ID=str(message.from_user.id))
+    user: User = await UsersDatabase.get_user_by(tg_id=str(message.from_user.id))
     if user:
         summ = payment.total_amount
         user = await UsersDatabase.update_user(user, change={"moneyBalance": user.moneyBalance + float(summ)})
@@ -28,7 +28,7 @@ async def handle_xtr_payment(message: Message):
         await message.answer(text=BALANCE_TOPUP_USER_REPLY(user, summ), kb=kb)
     await asyncio.sleep(2)
 
-    # await message.bot.refund_star_payment(message.from_user.id, payment.telegram_payment_charge_id)
+    # await message.bot.refund_star_payment(message.from_user.pk_id, payment.telegram_payment_charge_id)
 
 class XTRPayments:
     @staticmethod

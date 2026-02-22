@@ -8,11 +8,12 @@ from calendar import monthrange
 from datetime import date
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, CallbackQuery, Message, InlineKeyboardMarkup, \
+    InlineKeyboardButton
 from dotenv import load_dotenv
 from os import getenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from backend.xapi.servers import GET_XSERVERS
+from backend.xapi.servers import GET_XSERVERS, GET_ALL_SERVERS
 
 load_dotenv()
 
@@ -31,7 +32,7 @@ def add_months(sourcedate, months):
 print(f"[TIMEZONE] {time.tzname} UTC{'+' if time.timezone < 0 else '-'}{-time.timezone // 3600}")
 
 TOKEN = getenv("BOT_TOKEN") if not DEBUG else getenv("DEBUG_BOT_TOKEN")
-ADMINS = [1124386913, 5475897905, 6476836355] # 902448626
+ADMINS = [5475897905, 6476836355] # 902448626, 1124386913(N)
 
 REFERRAL_PERCENTAGE_QUEUE = [0, 11, 20, 27, 32, 35, 36, 49, 64, 81, 100]
 
@@ -39,11 +40,10 @@ SPB_PAYMENT_DATA = getenv('SPB_PAYMENT_DATA')
 CARD_PAYMENT_DATA = getenv('CARD_PAYMENT_DATA')
 NAME_PAYMENT_DATA = getenv('NAME_PAYMENT_DATA')
 
-OUTLINE_API_URL_1 = getenv('API_URL_1')
-OUTLINE_CERT_SHA256_1 = getenv('CERT_SHA_1')
-OUTLINE_API_URL_2 = getenv('API_URL_2')
-OUTLINE_CERT_SHA256_2 = getenv('CERT_SHA_2')
+FREE_PERIOD_DURATION = {"PROMO": 7, "FULL": 3}
+
 XSERVERS = []
+ALL_SERVERS = GET_ALL_SERVERS()
 
 def use_XSERVERS() -> list:
     global XSERVERS
@@ -54,16 +54,52 @@ def edit_XSERVERS_var(new):
     global XSERVERS
     XSERVERS = new
 
+async def check_server_availability(message: Message=None, callback: CallbackQuery=None, client=None, server=None) -> bool:
+    global XSERVERS
+    server = None
+    for server in use_XSERVERS():
+        if server.ip == client.server:
+            break
+    if not server:
+        if callback:
+            await callback.answer(f"😭Сервер {client.server} недоступен...")
+        if message:
+            await message.answer(f"😭Сервер {client.server} недоступен...")
+        for adm in ADMINS:
+            await bot.send_message(chat_id=adm, text=f"😭 Сервер {client.server} не отвечает на запрос...")
+        return False
+    return True
+
+
+def trusted_search(identifier, list_to_search, arg_function):
+    lst = [el for el in list_to_search if identifier == arg_function(el)]
+    if len(lst) == 1:
+        return lst[0]
+    else:
+        return None
+
+
+async def notif_to_admins(text: str):
+    for adm in ADMINS:
+        await bot.send_message(chat_id=adm, text=text)
+    return None
+
+
 # Database tokens & tables (one token has access to one table)
 DB_TOKEN = getenv("DB_TOKEN")
 TEST_DB_TOKEN = getenv("TEST_DB_TOKEN")
 
 TABLE_ID = "375433"
 DB_SERVER_TYPES = {"None": 2412169, "Outline": 2354398, "XSERVER": 2354397}
-DB_PROTOCOL_TYPES = {"ShadowSocks": 2365214, "VLESS": 2365215, "None": 2412170}
-TEST_TABLE_ID = "428486"
+
+CLIENTS_TABLE_ID = "610020"
+DB_PROTOCOL_TYPES = {"ShadowSocks": 3761535, "VLESS": 3761534}
+
+SERVERS_TABLE_ID = "609416"
+
+TEST_TABLE_ID = "610015"
 DB_TEST_SERVER_TYPES = {"None": 2447416, "Outline": 2447415, "XSERVER": 2447414}
-DB_TEST_PROTOCOL_TYPES = {"ShadowSocks": 2447417, "VLESS": 2447418, "None": 2447419}
+DB_TEST_PROTOCOL_TYPES = {"ShadowSocks": 3761535, "VLESS": 3761534}
 
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
@@ -91,13 +127,13 @@ server_checker_scheduler.add_job(func=get_servers, trigger="interval", hours=2)
 @dataclasses.dataclass()
 class Tariffs:
     PROMO: str = "PROMO"
-    MAX: str = "MAX"
+    FULL: str = "FULL"
 
 DEFAULT_PAYMENT_SETTINGS = {"Tariffs":{
-                                "PROMO": {"server_name": "XServer@94.159.100.60", "keyType": "VLESS", "coast": 55, "limitIp": 2},
-                                "MAX": {"server_name": "XServer@89.39.121.125", "keyType": "VLESS", "coast": 125, "limitIp": 5}
+                                "PROMO": {"server_ip": "94.159.100.60", "keyType": "VLESS", "coast": 55, "limitIp": 2},
+                                "FULL": {"server_ip": "89.39.121.125", "keyType": "VLESS", "coast": 125, "limitIp": 5}
                             },
-                            "Available_Tariffs": [Tariffs.MAX, Tariffs.PROMO],
+                            "Available_Tariffs": [Tariffs.FULL, Tariffs.PROMO],
                             "XTR_exchange_rate": 1.82}
 
 def get_preferred_payment_settings():
@@ -119,7 +155,7 @@ def edit_preferred_payment_settings(new):
     # BASIC_VPN_COST = new["coast"]
 
 PREFERRED_PAYMENT_SETTINGS = get_preferred_payment_settings()
-All_Tariffs = [Tariffs.MAX, Tariffs.PROMO]
+All_Tariffs = [Tariffs.FULL, Tariffs.PROMO]
 Available_Tariffs = PREFERRED_PAYMENT_SETTINGS["Available_Tariffs"]
 
 def use_Available_Tariffs() -> list:
@@ -142,6 +178,12 @@ MENU_KEYBOARD_MARKUP = ReplyKeyboardMarkup(
         ],
         resize_keyboard=True
     )
+
+MENU_INLINE_KEYBOARD_MARKUP = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="👤 Menu", callback_data="menu")]
+    ]
+)
 
 
 if __name__ == "globals":

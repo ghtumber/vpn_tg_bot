@@ -1,27 +1,25 @@
 import json
+from typing import Tuple
+
 import aiohttp
-from backend.models import User, OutlineClient, XClient
+
+from backend.models import User
 from datetime import date
-from globals import DB_TOKEN, DEBUG, TEST_DB_TOKEN, TABLE_ID, TEST_TABLE_ID, DB_SERVER_TYPES, DB_PROTOCOL_TYPES, \
-    DB_TEST_SERVER_TYPES, DB_TEST_PROTOCOL_TYPES, use_XSERVERS
+from globals import DB_TOKEN, DEBUG, TEST_DB_TOKEN, TABLE_ID, TEST_TABLE_ID
 
 
 class UsersDatabase:
     if DEBUG:
         DB_TOKEN = TEST_DB_TOKEN
         TABLE_ID = TEST_TABLE_ID
-        SERVER_TYPES = DB_TEST_SERVER_TYPES
-        PROTOCOL_TYPES = DB_TEST_PROTOCOL_TYPES
         print(f"[WARNING] Using TEST DB data!!!")
     else:
-        SERVER_TYPES = DB_SERVER_TYPES
-        PROTOCOL_TYPES = DB_PROTOCOL_TYPES
         DB_TOKEN = DB_TOKEN
         TABLE_ID = TABLE_ID
 
     @classmethod
-    async def get_all_users(cls, size=100, page=1) -> None | list[User]:
-        """Don't use if you can!!! Returns  list[User], count_of_rows"""
+    async def get_all_users(cls, size=100, page=1) -> None | Tuple[list[User], int]:
+        """Don't use if you can!!! Returns  list[User], count_of_rows_in_DB"""
         async with aiohttp.ClientSession() as session:
             response = await session.get(
                 f"https://api.baserow.io/api/database/rows/table/{cls.TABLE_ID}/?user_field_names=true&size={size}&page={page}",
@@ -40,42 +38,30 @@ class UsersDatabase:
                         PaymentDate = date(int(PD[0]), int(PD[1]), int(PD[2]))
                     else:
                         PaymentDate = None
-                    xClient = None
-                    outlineClient = None
-                    if result["serverType"]["value"] == "Outline":
-                        outlineClient = OutlineClient(keyID=int(result["keyID"]), key=result["key"], keyLimit=float(result["keyLimit"]))
-                    elif result["serverType"]["value"] == "XSERVER":
-                        for server in use_XSERVERS():
-                            if server.name == result["serverName"]:
-                                break
-                            server = None
-                        if server:
-                            xClient = await server.get_client_info(result["uuid"])
-                            xClient.key = result["key"]
-                    res.append(User(id=int(result["id"]), userID=int(result["userID"]), userTG=result["userTG"], outline_client=outlineClient,
-                            xclient=xClient, PaymentSum=int(result["PaymentSum"]), PaymentDate=PaymentDate, tariff=result["tariff"],
-                            serverName=result["serverName"], uuid=result["uuid"], serverType=result["serverType"]["value"], subId=result["subId"],
-                            Protocol=result["Protocol"]["value"], moneyBalance=float(result["moneyBalance"]), who_invited=result["who_invited"],
-                            referBonus=result["referBonus"], UserReliability=result["UserReliability"]))
+                    res.append(User(userID=int(result["userID"]), userTG=result["userTG"], id=int(result["id"]),
+                                    PaymentSum=int(result["PaymentSum"]), PaymentDate=PaymentDate, paying=bool(result["paying"]),
+                                    who_invited=result["who_invited"], referBonus=result["referBonus"],
+                                    moneyBalance=float(result["moneyBalance"]), tariff=result["tariff"],
+                                    UserReliability=bool(result["UserReliability"]), clients=result["clients"]))
                 return res, int(obj["count"])
             else:
                 print(f"##########\nException: Get all users request ERROR!\n{text}\n##########")
                 return None
 
     @classmethod
-    async def get_user_by(cls, ID: str = "", TG: str = "", KEY: str = "", UUID: str = "") -> None | User:
-        if ID:
+    async def get_user_by(cls, tg_id: str = "", tg: str = "", key: str = "", uuid: str = "") -> None | User:
+        if tg_id:
             filters = {'filter_type': 'AND',
-                       'filters': [{'field': 'userID', 'type': 'equal', 'value': str(ID)}]}
-        elif TG:
+                       'filters': [{'field': 'userID', 'type': 'equal', 'value': str(tg_id)}]}
+        elif tg:
             filters = {'filter_type': 'AND',
-                       'filters': [{'field': 'userTG', 'type': 'equal', 'value': str(TG)}]}
-        elif KEY:
+                       'filters': [{'field': 'userTG', 'type': 'equal', 'value': str(tg)}]}
+        elif key:
             filters = {'filter_type': 'AND',
-                       'filters': [{'field': 'key', 'type': 'equal', 'value': str(KEY)}]}
-        elif UUID:
+                       'filters': [{'field': 'key', 'type': 'equal', 'value': str(key)}]}
+        elif uuid:
             filters = {'filter_type': 'AND',
-                       'filters': [{'field': 'uuid', 'type': 'equal', 'value': str(UUID)}]}
+                       'filters': [{'field': 'uuid', 'type': 'equal', 'value': str(uuid)}]}
         else:
             print(f"##########\nException: No data passed to get request!\n##########")
             return None
@@ -95,42 +81,24 @@ class UsersDatabase:
                     PaymentDate = date(int(PD[0]), int(PD[1]), int(PD[2]))
                 else:
                     PaymentDate = None
-                UUID = u["uuid"] if u["uuid"] else 0
-                serverType = u["serverType"]
-                outlineClient = None
-                xClient = None
-                if serverType["value"] == "Outline":
-                    outlineClient = OutlineClient(keyID=int(u["keyID"]), key=u["key"], keyLimit=float(u["keyLimit"]))
-                elif serverType["value"] == "XSERVER":
-                    for server in use_XSERVERS():
-                        if server.name == u["serverName"]:
-                            break
-                        server = None
-                    if server is None:
-                        # await get_servers()
-                        xClient = "None"
-                    else:
-                        if u["Protocol"]["value"] == "ShadowSocks":
-                            xClient: XClient = await server.get_client_info(u["userTG"][1:])
-                        elif u["Protocol"]["value"] == "VLESS":
-                            xClient: XClient = await server.get_client_info(UUID)
-                        xClient.key = u["key"]
-                return User(id=int(u["id"]), userID=int(u["userID"]), userTG=u["userTG"], outline_client=outlineClient, xclient=xClient, PaymentSum=int(u["PaymentSum"]),
-                            PaymentDate=PaymentDate, serverName=u["serverName"], uuid=UUID, serverType=serverType["value"], tariff=u["tariff"], subId=u["subId"],
-                            Protocol=u["Protocol"]["value"], moneyBalance=float(u["moneyBalance"]), who_invited=u["who_invited"], referBonus=u["referBonus"], UserReliability=bool(u["UserReliability"]))
+                clients = [c["id"] for c in u["clients"]]
+                return User(userID=int(u["userID"]), userTG=u["userTG"], PaymentSum=int(u["PaymentSum"]),
+                            PaymentDate=PaymentDate, who_invited=u["who_invited"], referBonus=u["referBonus"],
+                            moneyBalance=float(u["moneyBalance"]), tariff=u["tariff"], clients=clients,
+                            UserReliability=bool(u["UserReliability"]), id=int(u["id"]), paying=bool(u["paying"]))
             else:
-                print(f"##########\nException: Get request ERROR! {ID=} {TG=}\n{UUID=}\n{KEY=}\n{text}\n##########")
+                print(f"##########\nException: Get request ERROR! {tg_id=}\n{tg=}\n{uuid=}\n{key=}\n{text}\n##########")
                 return None
 
     @classmethod
-    async def get_all_referrals(cls, ID: int) -> None | list[dict]:
+    async def get_all_referrals(cls, tg_id: int) -> None | list[dict]:
         """
-        :param ID: Telegram ID of inviter
+        :param tg_id: Telegram ID of inviter
         :return: list of dicts typed: {"TG": str, "PaymentSum": int, "tariff": str}
         """
-        if ID:
+        if tg_id:
             filters = {'filter_type': 'AND',
-                       'filters': [{'field': 'who_invited', 'type': 'equal', 'value': int(ID)}]}
+                       'filters': [{'field': 'who_invited', 'type': 'equal', 'value': int(tg_id)}]}
         else:
             print(f"########## get_all_referrals()\nException: No data passed to get request!\n##########")
             return None
@@ -150,7 +118,7 @@ class UsersDatabase:
                     res.append({"TG": result["userTG"], "tariff": result["tariff"], "PaymentSum": int(result["PaymentSum"])})
                 return res
             else:
-                print(f"########## get_all_referrals()\nException: Get request ERROR! {ID=}\n{text}\n##########")
+                print(f"########## get_all_referrals()\nException: Get request ERROR! {tg_id=}\n{text}\n##########")
                 return None
 
     @classmethod
@@ -165,21 +133,15 @@ class UsersDatabase:
                 json={
                     "userID": user.userID,
                     "userTG": user.userTG,
-                    "subId": user.subId,
-                    "Enabled": user.xclient.enable if user.xclient else True,
-                    "key": "",
                     "tariff": user.tariff,
-                    "keyLimit": None,
                     "PaymentSum": int(user.PaymentSum),
                     "PaymentDate": None,
-                    "serverName": str(user.serverName),
-                    "Protocol": str(user.Protocol),
-                    "serverType": str(user.serverType),
-                    "uuid": user.uuid,
                     "moneyBalance": 0,
                     "who_invited": user.who_invited,
                     "referBonus": user.referBonus,
-                    "UserReliability": user.reliability
+                    "UserReliability": user.reliability,
+                    "paying": user.paying,
+                    "clients": user.clients
                 }
             )
             text = await response.text()
@@ -190,9 +152,10 @@ class UsersDatabase:
                 if u["PaymentDate"]:
                     PD = u["PaymentDate"].split("-")
                     PaymentDate = date(int(PD[0]), int(PD[1]), int(PD[2]))
-                return User(id=user.id, userID=int(u["userID"]), userTG=u["userTG"], PaymentSum=int(u["PaymentSum"]), PaymentDate=PaymentDate, serverName=u["serverName"],
-                            serverType=user.serverType, Protocol=u["Protocol"], moneyBalance=0, tariff=u["tariff"], who_invited=u["who_invited"], referBonus=u["referBonus"],
-                            UserReliability=user.reliability, subId=u["subId"])
+                return User(userID=int(u["userID"]), userTG=u["userTG"], PaymentSum=int(u["PaymentSum"]),id=user.id,
+                            PaymentDate=PaymentDate, who_invited=u["who_invited"], referBonus=u["referBonus"],
+                            moneyBalance=0, tariff=u["tariff"], UserReliability=user.reliability, clients=u["clients"],
+                            paying=bool(u["paying"]))
             else:
                 raise Exception(f"Create request ERROR!\n{text}")
 
@@ -206,15 +169,6 @@ class UsersDatabase:
         if change:
             for field, value in change.items():
                 user.change(field=field, new_value=value)
-        if user.outline_client:
-            key = user.outline_client.key
-            keyLimit = user.outline_client.keyLimit
-        elif user.xclient:
-            key = await user.get_key(servers=use_XSERVERS())
-            keyLimit = user.xclient.totalGB
-        else:
-            key = ""
-            keyLimit = None
         PaymentDate = None
         if user.PaymentDate:
             PaymentDate = str(user.PaymentDate.strftime("%Y-%m-%d"))
@@ -228,21 +182,15 @@ class UsersDatabase:
                 json={
                     "userID": user.userID,
                     "userTG": user.userTG,
-                    "subId": user.subId,
-                    "Enabled": user.xclient.enable if user.xclient else True,
-                    "key": key,
                     "tariff": user.tariff,
-                    "keyLimit": keyLimit,
                     "PaymentSum": int(user.PaymentSum),
                     "PaymentDate": PaymentDate,
-                    "serverName": str(user.serverName),
-                    "Protocol": cls.PROTOCOL_TYPES[user.Protocol],
-                    "serverType": cls.SERVER_TYPES[user.serverType],
-                    "uuid": user.uuid,
                     "moneyBalance": user.moneyBalance,
                     "who_invited": user.who_invited,
                     "referBonus": user.referBonus,
-                    "UserReliability": user.reliability
+                    "UserReliability": user.reliability,
+                    "paying": user.paying,
+                    "clients": user.clients,
                 }
             )
             text = await response.text()
@@ -253,13 +201,12 @@ class UsersDatabase:
                 if u["PaymentDate"]:
                     PD = u["PaymentDate"].split("-")
                     PaymentDate = date(int(PD[0]), int(PD[1]), int(PD[2]))
-                return User(id=user.id, userID=int(u["userID"]), userTG=u["userTG"], outline_client=user.outline_client,
-                            xclient=user.xclient, PaymentSum=int(u["PaymentSum"]), moneyBalance=u["moneyBalance"],
-                            PaymentDate=PaymentDate, serverName=u["serverName"], uuid=user.uuid,
-                            serverType=u["serverType"], Protocol=u["Protocol"], referBonus=u["referBonus"], who_invited=user.who_invited,
-                            tariff=u["tariff"], UserReliability=user.reliability, subId=u["subId"])
+                return User(userID=int(u["userID"]), userTG=u["userTG"], PaymentSum=int(u["PaymentSum"]),
+                            PaymentDate=PaymentDate, who_invited=user.who_invited, referBonus=u["referBonus"],
+                            moneyBalance=u["moneyBalance"], tariff=u["tariff"], UserReliability=user.reliability,
+                            id=user.id, clients=u["clients"], paying=bool(u["paying"]))
             else:
-                raise Exception(f"!!! Update request ERROR!\n{text}")
+                raise Exception(f"!!! Update user request ERROR!\n{text}")
 
     @classmethod
     async def delete_user(cls, user: User) -> User | Exception:
@@ -275,4 +222,4 @@ class UsersDatabase:
                 print(f"###DELETED USER###\nUSER: {user}\n#########")
                 return user
             else:
-                return Exception(f"Delete request ERROR!\n{text}")
+                return Exception(f"Delete user request ERROR!\n{text}")

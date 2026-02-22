@@ -6,6 +6,7 @@ from types import NoneType
 
 from aiogram.client.session import aiohttp
 
+from backend.models import XKey
 
 DB_TEST_SERVER_TYPES = {"None": 2447416, "Outline": 2447415, "XSERVER": 2447414}
 DB_TEST_PROTOCOL_TYPES = {"ShadowSocks": 2447417, "VLESS": 2447418, "None": 2447419}
@@ -71,9 +72,9 @@ class User:
                 return
             case "key":
                 if self.outline_client:
-                    self.outline_client.key = new_value
+                    self.outline_client.key = [XKey(value=new_value)]
                 else:
-                    self.xclient.key = new_value
+                    self.xclient.key = [XKey(value=new_value)]
                 return
         raise Exception(f"Non changeable field {field} or etc...")
 

@@ -7,9 +7,9 @@ REPLY_REGISTRATION = lambda who_invited: f"""
 
 Мы рады, что вы выбрали нас для безопасного и приватного интернет-серфинга. Перед началом работы позвольте рассказать немного о том, что мы предлагаем:
 
-🔹 Анонимность и безопасность – без лишних вопросов и сложностей
-🔹 Быстрая настройка – начните пользоваться в пару кликов
-🔹 Подключение по безопасным протоколам Shadowsocks и VLESS
+🔐 Анонимность и безопасность – без лишних вопросов и сложностей
+⏳ Быстрая настройка – начните пользоваться в пару кликов
+🌱 Подключение по безопасным протоколам Shadowsocks и VLESS
 
 Нажмите кнопку ниже, чтобы начать свое путешествие с 🚀 Proxym1ty VPN.
 """
@@ -55,7 +55,7 @@ INSTRUCTIONS_TEXT = """
 """
 
 
-USER_GREETING_REPLY = lambda username, paymentSum, paymentDate, tariff, serverLocation, user_balance: f"""
+USER_GREETING_REPLY = lambda username, paymentSum, paymentDate, tariff, user_balance: f"""
 ✨ <b>Привет</b> {username}
 
 📋 Это <b>главное меню Proxym1ty</b>
@@ -64,20 +64,46 @@ USER_GREETING_REPLY = lambda username, paymentSum, paymentDate, tariff, serverLo
 
 💵 <b>Баланс</b>: {user_balance}🌟XTR
 ⚡ <b>Тариф</b>: {tariff}
-🏳 <b>Страна VPN</b>: {serverLocation}
 💳 <b>Следующая оплата</b> — {paymentSum}🌟XTR {paymentDate.strftime("%d.%m.%Y")}
 
 ⚡ Вот что можно посмотреть.
 """
+
+CLIENTS_LIST_REPLY = lambda username, clients: f"""
+🌚 Это <b>список ваших соединений</b>
+
+Здесь ты можешь управлять своим VPN
+
+è Соединения:
+{''.join(f'🌐Сервер: <i>{client.get_server_ip()}</i> 🚪{client.protocol} {f"\n/client_{client.pk_id}"}\n' for client in clients)}
+"""
+
+
+CLIENT_INFO_REPLY = lambda client_enable, sub_key, key, server_ip, expiry_date, ip_limit, traffic_info=None: f"""
+
+📊 Статус клиента: {'🟢Активный' if client_enable else '🔴Неактивен'}
+🌐 Сервер: <i>{server_ip}</i>
+⏳ Истекает: <b>17:00 {expiry_date} MSK</b>
+🖥️ Ограничение устройств: <b>{ip_limit if ip_limit else '♾️'}</b>
+{f'''📈 <b>Использование</b> за месяц:
+<b>{round(traffic_info['traffic'] / 1024**3, 2)}GB</b>/<b>{traffic_info['total'] // 1024**3}GB</b>
+[{''.join('☁' for i in range(int(traffic_info['progress'] * 10)))}{''.join('✦' for i in range(10 - int(traffic_info['progress'] * 10)))}]
+''' if traffic_info else ''}
+
+📋 Нажми на ключ, чтобы скопировать!
+🔗 <b>sub-ключ</b>:
+<blockquote expandable><code>{sub_key}</code></blockquote>
+🗿 <b>Обычный ключ</b>:
+<blockquote expandable><code>{key}</code></blockquote>
+"""
+
 
 CLEAN_USER_GREETING_REPLY = lambda username, user_balance: f"""
 ✨ <b>Привет</b> {username}
 
 📋 Это <b>главное меню Proxym1ty</b>
 
-Здесь ты можешь управлять своим VPN
-
-🔥 Сейчас доступен тестовый период 4 дня!
+🔥 Сейчас доступен FREE период!
 💵 <b>Баланс</b>: {user_balance}🌟XTR
 
 ⚡ Чтобы купить VPN, просто выбери нужный пункт.
@@ -96,6 +122,8 @@ EXHAUSTED_USER_GREETING_REPLY = lambda user: f"""
 ⚡ Чтобы возобновить доступ, просто выбери нужный пункт.
 """
 
+
+## TODO rework server error notif sys (multi client)
 SERVER_ERROR_USER_GREETING_REPLY = lambda user: f"""
 ✨ <b>Привет</b> {user.userTG}
 
@@ -145,6 +173,23 @@ MONEY_ENDING = lambda user: f"""
 ⌚ <i>У вас заканчиваются средства на балансе!</i>
 💳 Баланс необходимо пополнить до <b>{user.PaymentDate.strftime("%d.%m.%Y")}</b>
 💸 В этом месяце вам нужно заплатить <b>{user.PaymentSum}🌟XTR</b>
+"""
+
+FREE_PERIOD_TARIFFS = lambda: f"""
+🌟 Выбор <b>тарифа</b>.
+Выбери подходящий вам тариф:
+👉 <b>🔥7 дней</b> <b>🗿PROMO</b> подходит для тех, кто редко использует VPN (к примеру для просмотра Youtube)
+- <b>1</b> ключ в комплекте
+- <b>100 МБ/с</b> канал на сервере (ограничены вашим соединением)
+- подключение <b>до 2 устройств одновременно</b>
+- обычная тех. поддержка
+- возможны подвисания
+👉 <b>3 дня</b> <b>😎FULL</b> подходит для активных пользователей
+- <b>2</b> ключа в комплекте
+- <b>10 Gbit/s</b> канал на сервере (ограничены вашим соединением)
+- подключение <b>до 5 устройств одновременно</b>
+- приоритетная тех. поддержка
+- стабильный uptime 99%
 """
 
 PERIOD_ENDED = lambda user: f"""

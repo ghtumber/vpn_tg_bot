@@ -24,7 +24,7 @@ async def listen_to_centrifugo():
     channel = "$public:1304427"
     async with websockets.connect(uri) as websocket:
         auth_data = {
-            "id": 1,
+            "pk_id": 1,
             "params": {
                 "name": "python",
                 "token": client_token
@@ -38,7 +38,7 @@ async def listen_to_centrifugo():
         sub_token = get_sub_token(client=client, channel=channel)
 
         subscribe_data = {
-            "id": 2,
+            "pk_id": 2,
             "method": 1,
             "params": {
                 "channel": channel,

@@ -16,7 +16,6 @@ from frontend.replys import *
 from frontend.admin.payment_manager_handlers import router as payment_manager_router
 from frontend.admin.user_db_management import router as user_db_management_router
 from globals import ADMINS, MENU_KEYBOARD_MARKUP, use_XSERVERS, use_LAST_ALL_XSERVERS_UPDATE, get_servers
-from backend.outline.managers import SERVERS
 
 router = Router()
 router.include_router(payment_manager_router)
@@ -103,7 +102,7 @@ async def handle_cancel(message: Message):
 
 #----------------------------------------------SERVER DATA UPDATER---------------------------------
 
-@router.callback_query((F.data == "admin_update_all_xserver_shiit") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_update_all_xserver_shiit") & (F.message.from_user.pk_id in ADMINS))
 async def handle_update_all_xserver_shiit(callback: CallbackQuery):
     if (datetime.now() - use_LAST_ALL_XSERVERS_UPDATE()) >= timedelta(minutes=5):
         await callback.answer(text="( ◡̀_◡́)ᕤ Now updating...", show_alert=True)
@@ -113,7 +112,7 @@ async def handle_update_all_xserver_shiit(callback: CallbackQuery):
         await callback.answer("Not so frequent")
 
 #-----------------------------------------------Managers-------------------------------------------
-@router.callback_query((F.data == "admin_manage_xservers") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_manage_xservers") & (F.message.from_user.pk_id in ADMINS))
 async def handle_create_xserver_client(callback: CallbackQuery):
     await callback.answer("")
     keyboard = InlineKeyboardMarkup(
@@ -124,19 +123,6 @@ async def handle_create_xserver_client(callback: CallbackQuery):
         ]
     )
     await callback.message.answer(f"Доступно {len(use_XSERVERS())} XServers.", reply_markup=MENU_KEYBOARD_MARKUP)
-    await callback.message.answer("⚡ Вот что можно сделать сейчас.", reply_markup=keyboard)
-
-
-@router.callback_query((F.data == "admin_manage_outlines") & (F.message.from_user.id in ADMINS))
-async def handle_create_xserver_client(callback: CallbackQuery):
-    await callback.answer("")
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="➕ Создать ключ", callback_data="admin_create_outline_key"),
-             InlineKeyboardButton(text="🚹 Удалить ключ", callback_data="admin_delete_outline_key")],
-        ]
-    )
-    await callback.message.answer(f"Доступно {len(SERVERS)} Outline серверов.", reply_markup=MENU_KEYBOARD_MARKUP)
     await callback.message.answer("⚡ Вот что можно сделать сейчас.", reply_markup=keyboard)
 
 
@@ -235,7 +221,7 @@ async def handle_xserver_new_client_data_limiting(message: Message, state: FSMCo
         epoch = datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0) - timedelta(seconds=time.timezone)
         delta = timedelta(hours=15) if time.timezone == 0 else timedelta(hours=20)
         expiryTime = (datetime(data["expiryDate"].year, data["expiryDate"].month, data["expiryDate"].day, hour=0, minute=0) - epoch + delta).total_seconds() * 1000
-    xclient: XClient = await data["inbound"].add_client(email=data["email"], totalBytes=data["data_limit"]*1024**3, expiryTime=expiryTime)
+    xclient: XClient = await data["inbound"].add_xclient(email=data["email"], totalBytes=data["data_limit"] * 1024 ** 3, expiryTime=expiryTime)
     answer = f"""
 ✅ <b>Ключ создан</b>
 📛 <b>Название</b>: {xclient.email}
@@ -276,10 +262,10 @@ async def handle_xserver_xclient_person_selection(message: Message, state: FSMCo
         await message.answer("Ошибка ❗\nВероятно такого сервера нет 😑")
         return 0
 
-    clients = await server.get_all_clients()
+    clients = await server.get_all_xclients()
     text = ""
     for client in clients:
-        text += f"\n🏷Email: {client.email}\n🆔UUID: <code>{client.uuid if not client.password else client.email}</code>"
+        text += f"\n🏷Email: {client['email']}\n🆔UUID: <code>{client['uuid']}</code>"
 
     await state.update_data(server=server)
     await state.set_state(XserverClientListing.UUID)
@@ -291,7 +277,7 @@ async def handle_xserver_new_client_data_listing(message: Message, state: FSMCon
     await state.update_data(UUID=message.text.strip())
     data = await state.get_data()
     await state.clear()
-    xclient: XClient = await data["server"].get_client_info(identifier=data["UUID"])
+    xclient: XClient = await data["server"].get_xclient(identifier=data["UUID"])
     if xclient.password:
         client_traffics = await data["server"].get_client_traffics(email=data["UUID"])
     else:
@@ -349,10 +335,10 @@ async def handle_admin_disable_xclient(callback: CallbackQuery, state: FSMContex
     for srv in use_XSERVERS():
         if srv.name == packed[0]:
             for inb in srv.inbounds:
-                if inb.id == int(packed[1]):
+                if inb.pk_id == int(packed[1]):
                     inbound = inb
     for cl in inbound.settings["clients"]:
-        if cl["id"] == packed[2]:
+        if cl["pk_id"] == packed[2]:
             client = XClient.create_from_dict(cl)
     await state.update_data(inbound=inbound, client=client)
     await state.set_state(XserverClientDisabling.confirmation)
@@ -365,7 +351,8 @@ async def handle_admin_disable_xclient(callback: CallbackQuery, state: FSMContex
 async def handle_xserver_client_disabling(message: Message, state: FSMContext):
     data = await state.get_data()
     inbound = data["inbound"]
-    success = await inbound.update_client(client=data["client"], changes={'enable': False})
+    data["client"].enable = False
+    success = await inbound.update_xclient(client=data["client"])
     await state.clear()
     await message.delete()
     if success:
@@ -389,10 +376,10 @@ async def handle_admin_enable_xclient(callback: CallbackQuery, state: FSMContext
     for srv in use_XSERVERS():
         if srv.name == packed[0]:
             for inb in srv.inbounds:
-                if inb.id == int(packed[1]):
+                if inb.pk_id == int(packed[1]):
                     inbound = inb
     for cl in inbound.settings["clients"]:
-        if cl["id"] == packed[2]:
+        if cl["pk_id"] == packed[2]:
             client = XClient.create_from_dict(cl)
     await state.update_data(inbound=inbound, client=client)
     await state.set_state(XserverClientEnabling.confirmation)
@@ -405,7 +392,8 @@ async def handle_admin_enable_xclient(callback: CallbackQuery, state: FSMContext
 async def handle_xserver_client_enabling(message: Message, state: FSMContext):
     data = await state.get_data()
     inbound = data["inbound"]
-    success = await inbound.update_client(client=data["client"], changes={'enable': True})
+    data["client"].enable = True
+    success = await inbound.update_xclient(client=data["client"])
     await state.clear()
     await message.delete()
     if success:
@@ -430,7 +418,7 @@ async def handle_admin_delete_xclient(callback: CallbackQuery, state: FSMContext
     for srv in use_XSERVERS():
         if srv.name == packed[0]:
             for inb in srv.inbounds:
-                if inb.id == int(packed[1]):
+                if inb.pk_id == int(packed[1]):
                     inbound = inb
     await state.update_data(inbound=inbound, UUID=packed[2])
     await state.set_state(XserverClientDeleting.confirmation)
@@ -445,9 +433,9 @@ async def handle_xserver_client_deletion(message: Message, state: FSMContext):
     client = None
     inbound = data["inbound"]
     for cl in inbound.settings["clients"]:
-        if cl["id"] == data["UUID"]:
+        if cl["pk_id"] == data["UUID"]:
             client = cl
-    success = await inbound.delete_client(client_id=data["UUID"])
+    success = await inbound.delete_xclient(client_uuid=data["UUID"])
     await state.clear()
     await message.delete()
     if success:
@@ -473,12 +461,12 @@ async def handle_admin_updateExpriryDate(callback: CallbackQuery, state: FSMCont
     for srv in use_XSERVERS():
         if srv.name == packed[0]:
             for inb in srv.inbounds:
-                if inb.id == int(packed[1]):
+                if inb.pk_id == int(packed[1]):
                     inbound = inb
                     break
             break
     epoch = datetime.utcfromtimestamp(0)
-    xclient: XClient = await srv.get_client_info(identifier=packed[2])
+    xclient: XClient = await srv.get_xclient(identifier=packed[2])
     expriryDate = epoch + timedelta(milliseconds=xclient.expiryTime)
 
     await state.update_data(inbound=inbound, UUID=packed[2], expriryDate=expriryDate)
@@ -523,15 +511,15 @@ async def handle_xserver_updateExpriryDate_confirmation(message: Message, state:
     inbound: Inbound = data["inbound"]
     for cl in inbound.settings["clients"]:
         if inbound.protocol == "vless":
-            if cl["id"] == data["UUID"]:
+            if cl["pk_id"] == data["UUID"]:
                 client = XClient.create_from_dict(cl)
         elif inbound.protocol == "shadowsocks":
             if cl["email"] == data["UUID"]:
                 client = XClient.create_from_dict(cl)
     epoch = datetime.utcfromtimestamp(0)
     delta = timedelta(hours=14) if time.timezone == 0 else timedelta(hours=19)
-    success = await inbound.update_client(client, {
-        "expiryTime": (datetime(new_date.year, new_date.month, new_date.day) - epoch + delta).total_seconds() * 1000})
+    client.expiryTime = int((datetime(new_date.year, new_date.month, new_date.day) - epoch + delta).total_seconds() * 1000)
+    success = await inbound.update_xclient(client)
     await state.clear()
     await message.delete()
     if success:
@@ -546,152 +534,3 @@ async def handle_xserver_updateExpriryDate_confirmation(message: Message, state:
         await message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)
         return
     await message.answer(text="‼ Ошибка!\nState очищен.", reply_markup=MENU_KEYBOARD_MARKUP)
-
-
-
-# -------------------------------------------Outline-------------------------------------------------
-@router.callback_query((F.data == "admin_create_outline_key") & (F.message.from_user.id in ADMINS))
-async def handle_create_key(callback: CallbackQuery, state: FSMContext):
-    await callback.answer("")
-
-    def build_kb():
-        builder = ReplyKeyboardBuilder()
-        for ind in range(len(SERVERS)):
-            builder.button(text=f"{str(ind + 1)}) {SERVERS[ind].name}")
-        builder.button(text="❌ Отмена")
-        if len(SERVERS) % 2 == 0:
-            builder.adjust(*[2 for _ in range(len(SERVERS) // 2)], 1)
-        else:
-            builder.adjust(*[2 for _ in range(len(SERVERS) // 2 + 1)], 1)
-        return builder.as_markup(resize_keyboard=True)
-
-    await callback.message.answer("🌐 Доступные сервера:", reply_markup=build_kb())
-    await callback.message.delete()
-    await state.set_state(OutlineKeyCreation.server)
-
-
-@router.message(OutlineKeyCreation.server)
-async def handle_server_selection(message: Message, state: FSMContext):
-    try:
-        server = SERVERS[int(message.text.split(")")[0]) - 1]
-    except IndexError:
-        await message.answer("Ошибка ❗\nВероятно такого сервера нет 😑")
-        return 0
-    await state.update_data(server=server)
-    await state.set_state(OutlineKeyCreation.name)
-    await message.answer(text="🔑 Дайте имя ключу:", reply_markup=CANCEL_KB)
-
-
-@router.message(OutlineKeyCreation.name)
-async def handle_key_naming(message: Message, state: FSMContext):
-    await state.update_data(name=message.text.strip())
-    await state.set_state(OutlineKeyCreation.data_limit)
-    await message.answer(text="⏹ Ограничение ключа в ГБ(0 - нет):")
-
-
-@router.message(OutlineKeyCreation.data_limit)
-async def handle_key_data_limiting(message: Message, state: FSMContext):
-    try:
-        limit = float(message.text.strip())
-    except ValueError:
-        await message.answer(text="Ошибка ❗\nВероятно это не число 😑\np.s. или надо юзать точку ХД")
-        return 0
-    await state.update_data(data_limit=limit)
-    data = await state.get_data()
-    await state.clear()
-    key = data["server"].create_new_key(name=data["name"], data_limit_gb=data["data_limit"])
-    link = str(key.access_url).split("?")[0] + "#Proxym1ty-VPN"
-    #raise Exception(f"{key=}")
-    # print(f"{key=}")
-    answer = f"""
-✅ <b>Ключ создан</b>
-📛 <b>Название</b>: {key.name}
-🆔 <b>ID</b>: {key.key_id}
-🛰 <b>Сервер</b>: {data["server"].name}
-⏹ <b>Ограничение</b>: {key.data_limit / 1024**3 if key.data_limit else "~INF~"}GB
-🔑 <b>Ключ</b>: <pre><code>{link}</code></pre>
-"""
-    await message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)
-
-
-@router.callback_query((F.data == "admin_delete_outline_key") & (F.message.from_user.id in ADMINS))
-async def handle_create_key(callback: CallbackQuery, state: FSMContext):
-    await callback.answer("")
-
-    def build_kb():
-        builder = ReplyKeyboardBuilder()
-        for ind in range(len(SERVERS)):
-            builder.button(text=f"{str(ind + 1)}) {SERVERS[ind].name}")
-        builder.button(text="❌ Отмена")
-        if len(SERVERS) % 2 == 0:
-            builder.adjust(*[2 for _ in range(len(SERVERS) // 2)], 1)
-        else:
-            builder.adjust(*[2 for _ in range(len(SERVERS) // 2 + 1)], 1)
-        return builder.as_markup(resize_keyboard=True)
-
-    await callback.message.answer("❔ На каком сервере ключ?\n\n🌐 Доступные сервера:", reply_markup=build_kb())
-    await callback.message.delete()
-    await state.set_state(OutlineKeyRemoval.server)
-
-
-@router.message(OutlineKeyRemoval.server)
-async def handle_key_removal_server_selection(message: Message, state: FSMContext):
-    try:
-        m = message.text.split(")")
-        server = SERVERS[int(m[0]) - 1]
-    except IndexError:
-        await message.answer("Ошибка ❗\nВероятно такого сервера нет 😑")
-        return 0
-    await state.update_data(server=server)
-    await state.set_state(OutlineKeyRemoval.id)
-    await message.answer(text="🆔 Какой ID ключа?", reply_markup=CANCEL_KB)
-
-
-@router.message(OutlineKeyRemoval.id)
-async def handle_key_removal_identification(message: Message, state: FSMContext):
-    try:
-        id = int(message.text.strip())
-        await state.update_data(id=id)
-    except ValueError:
-        await message.answer(text="Ошибка ❗\nВероятно это не целое число 😑")
-        return 0
-    await state.set_state(OutlineKeyRemoval.confirmation)
-    data = await state.get_data()
-    info = data["server"].get_key_info(str(id))
-    if info is None:
-        await message.answer(text="Ошибка ❗\nТакого ключа не существует 😑")
-        return 0
-    answer = f"""
-❓ <b>Удаляем ключ?</b>
-📛 <b>Название</b>: {info.name}
-🆔 <b>ID</b>: {info.key_id}
-🛰 <b>Сервер</b>: {data["server"].name}
-⏹ <b>Ограничение</b>: {info.data_limit / 1024**3}GB
-🔑 <b>Ключ</b>: <code>{info.access_url}</code>
-"""
-    kb = ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text="✅ Удаляем"), KeyboardButton(text="❌ Отмена")]
-    ], resize_keyboard=True)
-    await message.answer(text=answer, reply_markup=kb, parse_mode="HTML")
-
-
-@router.message(OutlineKeyRemoval.confirmation)
-async def handle_key_naming(message: Message, state: FSMContext):
-    data = await state.get_data()
-    info = data["server"].get_key_info(str(data["id"]))
-    if info is None:
-        await message.answer(text="Ошибка ❗\nТакого ключа не существует 😑")
-        return 0
-    data["server"].delete_key(str(data["id"]))
-    answer = f"""
-‼ <b>Ключ удалён</b>
-📛 <b>Название</b>: {info.name}
-🆔 <b>ID</b>: {info.key_id}
-🛰 <b>Сервер</b>: {data["server"].name}
-⏹ <b>Ограничение</b>: {info.data_limit / 1024**3}GB
-🔑 <b>Ключ</b>: <pre><code>{info.access_url}</code></pre>
-"""
-    await message.answer(text=answer, reply_markup=MENU_KEYBOARD_MARKUP)
-
-
-

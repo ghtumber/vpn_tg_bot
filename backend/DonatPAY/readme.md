@@ -90,11 +90,12 @@ async def handle_regain_user_access(callback: CallbackQuery):
 
 
 ## frontend/admin/handlers.py
+
 ```python
 from backend.DonatPAY.donations import DonatPAYHandler
 
 
-@router.callback_query((F.data == "admin_test_donatPAY") & (F.message.from_user.id in ADMINS))
+@router.callback_query((F.data == "admin_test_donatPAY") & (F.message.from_user.pk_id in ADMINS))
 async def handle_test_donatPAY(callback: CallbackQuery):
     await callback.answer("")
     await DonatPAYHandler.get_notifications(message=callback.message)

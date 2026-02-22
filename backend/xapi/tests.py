@@ -44,7 +44,7 @@ class Client:
         subId = None
         if "subId" in dct.keys():
             subId = dct["subId"]
-        return Client(id=dct["id"], reset=dct["reset"], enable=dct["enable"], totalGB=dct["totalGB"], expiryTime=dct["expiryTime"],
+        return Client(id=dct["pk_id"], reset=dct["reset"], enable=dct["enable"], totalGB=dct["totalGB"], expiryTime=dct["expiryTime"],
                                 tgId=dct["tgId"], limitIp=dct["limitIp"], email=dct["email"], flow=flow, password=password, subId=subId)
 
     def for_api(self):
@@ -139,7 +139,7 @@ class XServer:
                     raise Exception(f"[{resp.status}]Get inbound data exception! {js['msg']}")
                 if len(obj) > 0:
                     for inb in obj:
-                        inb_id = inb["id"]
+                        inb_id = inb["pk_id"]
                         predata = dict()
                         predata["settings"] = json.loads(inb["settings"])
                         predata["streamSettings"] = json.loads(inb["streamSettings"])
@@ -290,7 +290,7 @@ async def main():
     inb: Inbound = server.inbounds[0]
     print(inb.protocol)
     # client = Client.create_from_dict(inb.settings["clients"][1])
-    # traffic = await server.get_client_traffics(uuid=client.id)
+    # traffic = await server.get_client_traffics(uuid=client.pk_id)
     # print(traffic)
     # await inb.update_client(client=client, changes={})
     # client = await inb.add_client(email="OK_now", expiryTime=1733832000000, totalBytes=600*1024**3)

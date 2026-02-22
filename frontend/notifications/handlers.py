@@ -41,7 +41,7 @@ async def payment_system():
             for svr in use_XSERVERS():
                 if svr.name == user.serverName:
                     server = svr
-                    user.xclient = await svr.get_client_info(identifier=user.uuid)
+                    user.xclient = await svr.get_xclient(identifier=user.uuid)
                     break
             if user.xclient:
                 # print(f"[INFO] {user.xclient=} {datetime.datetime.fromtimestamp(user.xclient.expiryTime // 1000)}")
@@ -55,8 +55,8 @@ async def payment_system():
                         new_date = add_months(user.PaymentDate, 1)
                         epoch = datetime.datetime.utcfromtimestamp(0)
                         delta = timedelta(hours=14) if time.timezone == 0 else timedelta(hours=19)
-                        await inbound.update_client(user.xclient, {
-                            "expiryTime": (datetime.datetime(new_date.year, new_date.month, new_date.day) - epoch + delta).total_seconds() * 1000})
+                        #await inbound.update_xclient(user.xclient, {
+                        #    "expiryTime": (datetime.datetime(new_date.year, new_date.month, new_date.day) - epoch + delta).total_seconds() * 1000})
                         await inbound.reset_client_traffic(user.xclient.for_api())
                         user.change("PaymentDate", new_date)
                         await user.get_key(use_XSERVERS())
@@ -66,7 +66,7 @@ async def payment_system():
                     else:
                         user.xclient.enable = False
                         await user.get_key(use_XSERVERS())
-                        await inbound.update_client(user.xclient, {"enable": False})
+                        # await inbound.update_xclient(user.xclient, {"enable": False})
                         await UsersDatabase.update_user(user)
                         kb = InlineKeyboardMarkup(inline_keyboard=[
                             [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")]
@@ -79,7 +79,7 @@ async def check_period():
     #     print(f"check_period() execution in DEBUG mode")
     #     dat = date(day=1, month=1, year=2025)
     #     xclient = XClient(uuid="9d439b90-8e77-4e49-b845-f1afe8dd67a7", email="OK_now", enable=True, expiryTime=1734256800744, reset=0, tgId=5475897905, totalGB=644245094400)
-    #     all_users = [User(id=1, userID=5475897905, userTG="@M1rtex", PaymentSum=200, PaymentDate=dat, serverName="XServer@94.159.100.60", xclient=xclient, serverType="XSERVER", Protocol="VLESS", lastPaymentDate=dat, moneyBalance=0)]
+    #     all_users = [User(pk_id=1, userID=5475897905, userTG="@M1rtex", PaymentSum=200, PaymentDate=dat, serverName="XServer@94.159.100.60", xclient=xclient, serverType="XSERVER", Protocol="VLESS", lastPaymentDate=dat, moneyBalance=0)]
     now = datetime.datetime.now()
     all_users, count = await UsersDatabase.get_all_users(page=1, size=1)
     if (count // 100) < 1:
@@ -95,7 +95,7 @@ async def check_period():
                 if svr.name == user.serverName:
                     user_traffic = None
                     try:
-                        user.xclient = await svr.get_client_info(identifier=user.uuid)
+                        user.xclient = await svr.get_xclient(identifier=user.uuid)
                         user_traffic = await svr.get_client_traffics(uuid=user.xclient.uuid)
                         user_traffic = user_traffic["up"] + user_traffic["down"]
                     except AttributeError:
@@ -153,7 +153,7 @@ async def handle_admin_send_global_notification_state_2(message: Message, state:
     await state.set_state(GlobalNotificationState.confirmation)
 
 @router.message(GlobalNotificationState.confirmation)
-async def handle_admin_send_global_notification_state_2(message: Message, state: FSMContext):
+async def handle_admin_send_global_notification_state_3(message: Message, state: FSMContext):
     if message.text.strip() == "✅ Да":
         await state.update_data(confirmation=True)
         data = await state.get_data()
@@ -169,8 +169,8 @@ async def handle_admin_send_global_notification_state_2(message: Message, state:
             alls, _ = await UsersDatabase.get_all_users(page=page, size=100)
             all_users.extend(alls)
         # if DEBUG:
-        #     all_users = [User(userID=902448626, userTG="@M1rtexFAde", id=0, keyID=0, key="ss://123", PaymentSum=120, PaymentDate=date(2024, 12, 31), keyLimit=999, serverName="LOL"),
-        #               User(userID=863746464, userTG="@Anxious666Japan", id=0, keyID=0, key="ss://123", PaymentSum=120, PaymentDate=date(2024, 12, 31), keyLimit=999, serverName="LOL")]
+        #     all_users = [User(userID=902448626, userTG="@M1rtexFAde", pk_id=0, keyID=0, key="ss://123", PaymentSum=120, PaymentDate=date(2024, 12, 31), keyLimit=999, serverName="LOL"),
+        #               User(userID=863746464, userTG="@Anxious666Japan", pk_id=0, keyID=0, key="ss://123", PaymentSum=120, PaymentDate=date(2024, 12, 31), keyLimit=999, serverName="LOL")]
         notif = GlobalNotification(text=data["text"], users_to=all_users, callback_to=message.from_user.id)
         success = await notif.send()
         await state.clear()

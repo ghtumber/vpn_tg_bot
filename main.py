@@ -16,7 +16,6 @@ from frontend.user.handlers import router as user_router
 from frontend.admin.handlers import router as admin_router
 from backend.Payments.stars import router as stars_router
 from frontend.notifications.handlers import router as notifications_router
-from backend.outline.managers import SERVERS
 from globals import *
 from frontend.notifications.handlers import period_checker_scheduler, check_period
 
@@ -25,9 +24,9 @@ dp = Dispatcher()
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message, command: CommandObject):
-    user_resp = await UsersDatabase.get_user_by(TG="@" + str(message.from_user.username if message.from_user.username else ""))
+    user_resp = await UsersDatabase.get_user_by(tg_id=str(message.from_user.id))
     if user_resp:
-        await message.answer(REPLY_REGISTRATION(who_invited=False), reply_markup=MENU_KEYBOARD_MARKUP)
+        await menu(message)
     else:
         if command.args:
             try:
@@ -41,7 +40,7 @@ async def cmd_start(message: Message, command: CommandObject):
                 print(f"""##### {message.text}\nBad refer.\n#####""")
                 await cmd_start(message, command=CommandObject())
                 return 0
-            who_invited_user = await UsersDatabase.get_user_by(ID=str(who_invited))
+            who_invited_user = await UsersDatabase.get_user_by(tg_id=str(who_invited))
             await message.answer(text=REPLY_REGISTRATION(who_invited=who_invited_user.userTG), reply_markup=keyboard)
         else:
             keyboard = InlineKeyboardMarkup(
@@ -50,6 +49,7 @@ async def cmd_start(message: Message, command: CommandObject):
                 ]
             )
             await message.answer(text=REPLY_REGISTRATION(who_invited=False), reply_markup=keyboard)
+    return 0
 
 
 @dp.callback_query(F.data == "back_to_menu")
@@ -142,46 +142,28 @@ async def menu(message: Message, *args, **kwargs):
         user_id = message.from_user.id
     if user_id in ADMINS:
         await admin_menu(message)
-        return
+        return 0
     else:
-        user: User = await UsersDatabase.get_user_by(ID=str(user_id))
+        user: User = await UsersDatabase.get_user_by(tg_id=str(user_id))
         if user:
-            if user.xclient:
-                if user.xclient != "None":
-                    if user.xclient.enable:
-                        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                            [InlineKeyboardButton(text="📊 Использование", callback_data="xclient_vpn_usage"), InlineKeyboardButton(text="🔑 Ключ", callback_data="view_user_key")],
-                            [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
-                            [InlineKeyboardButton(text="📘 Инструкции", callback_data=f"get_instructions")]
-                        ])
-                        server = [s for s in use_XSERVERS() if s.name == user.serverName][0]
-                    else:
-                        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                            [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
-                            [InlineKeyboardButton(text="👉 Оплатить VPN", callback_data="regain_user_access")]
-                        ])
-                        await message.answer(text=EXHAUSTED_USER_GREETING_REPLY(user=user), reply_markup=keyboard)
-                        return
-                elif user.xclient == "None":
-                    keyboard = InlineKeyboardMarkup(
-                        inline_keyboard=[
-                            [InlineKeyboardButton(text="🚨Тех. поддержка", callback_data="user_get_TA_help")]
-                        ]
-                    )
-                    await message.answer(SERVER_ERROR_USER_GREETING_REPLY(user), reply_markup=keyboard)
-                    for admin in ADMINS:
-                        await bot.send_message(chat_id=admin, text=f"У {user.userTG} потерян доступ к серверу. Вероятно <b>сервер недоступен</b>.")
-                    return
-            elif user.outline_client:
-                keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔑 Мой ключ", callback_data="view_user_key")],
-                    [InlineKeyboardButton(text="📘 Инструкции", callback_data="get_outline_instructions")]
-                ])
-                server = [s for s in SERVERS if s.name == user.serverName][0]
+            if user.clients:
+                if user.paying:
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(text="🔗 Cоединения", callback_data="view_user_clients")],
+                        [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
+                        [InlineKeyboardButton(text="📘 Инструкции", callback_data=f"get_instructions")]
+                    ])
+                else:
+                    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                        [InlineKeyboardButton(text="👉 Оплатить VPN", callback_data="regain_user_access"), InlineKeyboardButton(text="🔗 Cоединения", callback_data="view_user_clients")],
+                        [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")],
+                        [InlineKeyboardButton(text="📘 Инструкции", callback_data=f"get_instructions")],
+                    ])
+                    await message.answer(text=EXHAUSTED_USER_GREETING_REPLY(user=user), reply_markup=keyboard)
             else:
                 if Available_Tariffs:
                     kb_l = [
-                        [InlineKeyboardButton(text="🔥 Бесплатный период!", callback_data="get_free_period")],
+                        [InlineKeyboardButton(text="🔥 Бесплатный VPN!", callback_data="get_free_period")],
                         [InlineKeyboardButton(text="🔓 Купить ключ", callback_data="buy_key")],
                         [InlineKeyboardButton(text="💰 Пополнить баланс", callback_data="topup_user_balance")]
                     ]
@@ -192,8 +174,8 @@ async def menu(message: Message, *args, **kwargs):
                     ]
                 keyboard = InlineKeyboardMarkup(inline_keyboard=kb_l)
                 await message.answer(text=CLEAN_USER_GREETING_REPLY(user_balance=user.moneyBalance, username=user.userTG), reply_markup=keyboard)
-                return
-            await message.answer(text=USER_GREETING_REPLY(username=user.userTG, paymentSum=user.PaymentSum, paymentDate=user.PaymentDate, tariff=user.tariff, serverLocation=server.location, user_balance=user.moneyBalance), reply_markup=keyboard)
+                return None
+            await message.answer(text=USER_GREETING_REPLY(username=user.userTG, paymentSum=user.PaymentSum, paymentDate=user.PaymentDate, tariff=user.tariff, user_balance=user.moneyBalance), reply_markup=keyboard)
         else:
             keyboard = InlineKeyboardMarkup(
                 inline_keyboard=[
@@ -201,6 +183,7 @@ async def menu(message: Message, *args, **kwargs):
                 ]
             )
             await message.answer(REPLY_REGISTRATION(who_invited=False), reply_markup=keyboard)
+    return 0
 
 @dp.message(F.text == "User")
 async def with_puree(message: Message):

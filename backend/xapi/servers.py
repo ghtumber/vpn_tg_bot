@@ -1,6 +1,4 @@
-import asyncio
 import ssl
-import string, random
 import os
 from dataclasses import dataclass
 import json
@@ -13,7 +11,9 @@ from aiohttp import ClientTimeout
 from dotenv import load_dotenv
 from os import getenv
 from datetime import datetime, timedelta
-from backend.models import XClient
+
+from backend.models import XClient, Client
+
 load_dotenv()
 
 ssl_context = ssl.create_default_context()
@@ -25,13 +25,15 @@ class XServer:
     LOGIN = getenv("SERVER_LOGIN")
     SUB_URL = getenv('SUB_URL')
     PASSWORD = getenv("SERVER_PASSWORD")
-    def __init__(self, ip, port, path, tariff, location="🇩🇪Germany"):
+    def __init__(self, db_pk, ip, tariff, path="PROXY", port=8080, location="🇩🇪Germany", sub_port=80):
+        self.db_pk = db_pk
         self.name = f"XServer@{ip}"
         self.location = location
         self.tariff = tariff
         self.ip = ip
         self.port = port
         self.path = path
+        self.sub_port = sub_port
         self.inbounds = list()
         self.login_cookies = SimpleCookie()
         self.session_start_time = datetime(2000, 1, 1)
@@ -53,6 +55,7 @@ class XServer:
             if exist is None:
                 return None
             self.last_update_time = now
+        return None
 
     async def login(self):
         """Logins into system and returns self"""
@@ -97,7 +100,7 @@ class XServer:
             return js["obj"] if type(js["obj"]) == dict else js["obj"][0]
         raise Exception("Get data exception! Check: URI, COOKIES")
 
-    async def get_client_info(self, identifier: str) -> XClient | None:
+    async def get_xclient(self, client: Client, identifier: str="") -> XClient | None:
         """
         Returns XClient object or None(if not found)
         identifier = UUID or email!!!
@@ -107,22 +110,20 @@ class XServer:
             clients = inb.settings["clients"]
             for client_dict in clients:
                 if "id" in client_dict.keys():
-                    if client_dict["id"] == identifier:
+                    if client_dict["id"] == client.uuid or client_dict["id"] == identifier:
                         # print(f"get_client_info() -> {client_dict}")
-                        client = XClient.create_from_dict(dct=client_dict)
-                        client.key = inb.form_key({"clients": [client.for_api()]})
-                        client.sub_key = f"http://{self.ip}:2096{self.SUB_URL}{client.subId}"
-                        return client
-                elif "password" in client_dict.keys():
-                    if client_dict["email"] == identifier:
-                        client = XClient.create_from_dict(dct=client_dict)
-                        client.key = inb.form_key({"clients": [client.for_api()]})
-                        client.sub_key = f"http://{self.ip}:2096{self.SUB_URL}{client.subId}"
-                        return client
+                        xclient = XClient.create_from_dict(dct=client_dict, client=client)
+                        xclient.key = inb.form_key({"clients": [xclient.for_api()]})
+                        return xclient
+                elif "password" in client_dict.keys() or client_dict["id"] == identifier:
+                    if client_dict["email"] == client.uuid:
+                        xclient = XClient.create_from_dict(dct=client_dict, client=client)
+                        xclient.key = inb.form_key({"clients": [xclient.for_api()]})
+                        return xclient
         return None
 
-    async def get_all_clients(self) -> list[XClient]:
-        """Returns list of XClients or None"""
+    async def get_all_xclients(self) -> list[dict]:
+        """:return: list of {"email": email, "uuid": uuid}"""
         await self.check_data()
         res = []
         for inb in self.inbounds:
@@ -133,7 +134,8 @@ class XServer:
                     print(f"[ERROR] NO SubId {client['email']} - {client}")
                     raise Exception(f"[ERROR] NO SubId {client['email']}")
                 else:
-                    res.append(XClient.create_from_dict(dct=client))
+                    uuid = client["id"] if "id" in client.keys() else client["email"]
+                    res.append({"email": client["email"], "uuid": uuid})
         return res if res else None
 
     async def get_client_ips(self, email: str):
@@ -216,14 +218,6 @@ class Inbound:
                     raise Exception(f"[{resp.status}]Get inbound data exception! {js['msg']}")
                 obj = js["obj"]
                 self.settings = json.loads(obj["settings"])
-                # супер странная часть кода
-                # ------------------------------------
-                # clients = []
-                # for c in self.settings["clients"]:
-                #     client = XClient.create_from_dict(c)
-                #     clients.append(client)
-                # self.settings["clients"] = clients
-                # -------------------------------------
                 self.streamSettings = json.loads(obj["streamSettings"])
                 self.sniffing = json.loads(obj["sniffing"])
                 self.protocol = obj["protocol"]
@@ -233,52 +227,60 @@ class Inbound:
                 return self
         raise Exception(f"[{resp.status}]Get data exception! Check: URI, COOKIES")
 
-    async def add_client(self, email: str, subId: str, tgId: int = 0, expiryTime: int = 0, totalBytes: int = 0, limitIp: int = 0) -> XClient:
-        """Adds client to inbound, returns client with key"""
+    async def add_xclient(self, email: str, client: Client = None, tgId: int = 0, expiryTime: int = 0,
+                          totalBytes: int = 0, limitIp: int = 0) -> XClient:
+        """
+        Adds client to inbound, returns client with key
+        USE BEFORE CLIENTS DATABASE!!!
+        :param client: Optional
+        :return: XClient
+        """
         await self.server.get_session()
+        if client:
+            subid = client.subId
+            key = client.key
+            c_id = client.pk_id
+        else:
+            subid = email.replace("_", "")
+            key = ""
+            c_id = None
         if self.protocol == "vless":
-            client = XClient(uuid=str(uuid.uuid4()), flow="xtls-rprx-vision", email=email, limitIp=limitIp, totalGB=totalBytes, expiryTime=expiryTime,
-                            enable=True, tgId=tgId, reset=0, subId=subId)
-            settings = {"clients": [client.for_api()]}
-            data = {
-                "id": self.id,
-                "settings": json.dumps(obj=settings)
-            }
+            xclient = XClient(uuid=str(uuid.uuid4()), flow="xtls-rprx-vision", email=email, limitIp=limitIp, totalGB=totalBytes, expiryTime=expiryTime,
+                              enable=True, tgId=tgId, reset=0, subId=subid, protocol="vless", key=key, server=self.server, pk_id=c_id)
         if self.protocol == "shadowsocks":
             random_bytes = os.urandom(32)
             password = base64.standard_b64encode(random_bytes).decode()
-            client = XClient(uuid=email, email=email, limitIp=limitIp, totalGB=totalBytes, expiryTime=expiryTime, enable=True, tgId=tgId, reset=0,
-                             password=password, subId=subId)
-            settings = {"clients": [client.for_api()]}
-            data = {
-                "id": self.id,
-                "settings": json.dumps(obj=settings)
-            }
-        async with aiohttp.ClientSession() as s:
-            resp = await s.post(url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/addClient",
-                                ssl=ssl_context, data=data, cookies=self.server.login_cookies)
-        if resp.status == 200:
-            await self.get_data()
-            client.key = self.form_key(client_data=settings)
-            client.sub_key = f"http://{self.server.ip}:2096{self.server.SUB_URL}{subId}"
-            return client
-        raise Exception(f"[{resp.status}]Add user exception! Check: URI, COOKIES")
-
-    async def update_client(self, client: XClient, changes: dict) -> bool:
-        """keys from user same to keys in changes!"""
-        await self.server.get_session()
-        u = client.for_api()
-        u_keys = u.keys()
-        for k, v  in changes.items():
-            if k in u_keys and k != 'id':
-                u[k] = v
-        settings = {"clients": [u]}
+            xclient = XClient(uuid=str(uuid.uuid4()), flow="", email=email, limitIp=limitIp,
+                              totalGB=totalBytes, expiryTime=expiryTime, enable=True, tgId=tgId, reset=0, subId=subid,
+                              protocol="shadowsocks", key=key, server=self.server, pk_id=c_id, password=password)
+        settings = {"clients": [xclient.for_api()]}
         data = {
             "id": self.id,
             "settings": json.dumps(obj=settings)
         }
         async with aiohttp.ClientSession() as s:
-            resp = await s.post(url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/updateClient/{client.uuid if client.flow else client.email}",
+            resp = await s.post(url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/addClient",
+                                ssl=ssl_context, data=data, cookies=self.server.login_cookies)
+        if resp.status == 200:
+            await self.get_data()
+            print(f"HERE WAS THE ME {await resp.text()}")
+            xclient.key = self.form_key(client_data=settings)
+            return xclient
+        raise Exception(f"[{resp.status}]Add user exception! Check: URI, COOKIES")
+
+    async def update_xclient(self, xclient: XClient) -> bool:
+        """
+        Keys from user same to keys in changes!!!
+        """
+        await self.server.get_session()
+        u = xclient.for_api()
+        settings = {"clients": [u]}
+        data = {
+            "pk_id": self.id,
+            "settings": json.dumps(obj=settings)
+        }
+        async with aiohttp.ClientSession() as s:
+            resp = await s.post(url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/updateClient/{xclient.uuid if xclient.flow else xclient.email}",
                                 ssl=ssl_context, data=data, cookies=self.server.login_cookies)
             if resp.status == 200:
                 await self.get_data()
@@ -286,7 +288,12 @@ class Inbound:
         raise Exception(f"[{resp.status}]Update user exception! Check: URI, COOKIES")
 
     async def reset_client_traffic(self, client: dict) -> bool:
-        """Resets client traffic, returns success bool"""
+        """
+        Params:
+        client: xclient.for_api()
+        Annotation:
+        Resets client traffic, returns success bool
+        """
         await self.server.get_session()
         async with aiohttp.ClientSession() as s:
             resp = await s.post(url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/{self.id}/resetClientTraffic/{client['email']}",
@@ -295,12 +302,12 @@ class Inbound:
                 return True
         raise Exception(f"[{resp.status}]Reset client traffic exception! Check: URI, COOKIES")
 
-    async def delete_client(self, client_id: str):
+    async def delete_xclient(self, client_db_pk: str):
         """Fully REMOVES client!!! If disabling use update func!!!!"""
         await self.server.get_session()
         async with aiohttp.ClientSession() as s:
             resp = await s.post(
-                url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/{self.id}/delClient/{client_id}",
+                url=f"https://{self.server.ip}:{self.server.port}/{self.server.path}/panel/api/inbounds/{self.id}/delClient/{client_db_pk}",
                 ssl=ssl_context, cookies=self.server.login_cookies)
             if resp.status == 200:
                 await self.get_data()
@@ -336,14 +343,18 @@ class Inbound:
             return key
         raise Exception(f"Key forming error. Check data exist! {self.protocol=}")
 
+ALL_SERVERS = [XServer(ip="94.159.100.60", port=59999, path="PROXY", tariff="PROMO", db_pk=1),
+                XServer(ip="94.159.98.138", port=59999, path="PROXY", tariff="PROMO", db_pk=2),
+                #XServer(ip="89.39.121.125", port=59999, path="PROXY", tariff="MAX"),
+                XServer(ip="85.192.24.16", port=8080, path="PROXY", tariff="FULL", db_pk=34),
+                ]
+
+def GET_ALL_SERVERS() -> list:
+    return ALL_SERVERS
 
 
 async def GET_XSERVERS() -> (list[XServer], list[XServer]):
-    XSERVERS = [XServer(ip="94.159.100.60", port=59999, path="PROXY", tariff="PROMO"),
-                XServer(ip="94.159.98.138", port=59999, path="PROXY", tariff="PROMO"),
-                #XServer(ip="89.39.121.125", port=59999, path="PROXY", tariff="MAX"),
-                XServer(ip="85.192.24.16", port=59999, path="PROXY", tariff="MAX"),
-                ]
+    XSERVERS = ALL_SERVERS.copy()
     removed = []
     i = 0
     for server in XSERVERS:
@@ -354,10 +365,10 @@ async def GET_XSERVERS() -> (list[XServer], list[XServer]):
             else:
                 XSERVERS.pop(i)
                 removed.append(server)
-                print(f"[LOG] XServer {server.name} NOT connected, some problem")
+                print(f"[LOG] XServer {server.name} NOT connected, some problem, check login func")
         except aiohttp.ConnectionTimeoutError:
             XSERVERS.pop(i)
             removed.append(server)
-            print(f"[LOG] XServer {server.name} NOT connected, some problem")
+            print(f"[LOG] XServer {server.name} NOT connected, ConnectionTimeoutError")
         i += 1
     return XSERVERS, removed

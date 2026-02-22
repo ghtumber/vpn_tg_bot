@@ -1,1 +1,1 @@
-{"Available_Tariffs": ["PROMO", "MAX"], "XTR_exchange_rate": 1.82, "Tariffs": {"MAX": {"server_name": "XServer@85.192.24.16", "keyType": "VLESS", "coast": 125.0}, "PROMO": {"server_name": "XServer@94.159.98.138", "keyType": "VLESS", "coast": 55.0}}}
+{"Available_Tariffs": ["FULL", "PROMO"], "Tariffs": {"FULL": {"server_ip": "85.192.24.16", "keyType": "VLESS", "coast": 125.0}, "PROMO": {"server_ip": "94.159.100.60", "keyType": "VLESS", "coast": 55.0}}, "XTR_exchange_rate": 1.82}
